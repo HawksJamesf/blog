@@ -1,0 +1,942 @@
+ 
+
+
+
+
+ 
+
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>电解质</title>
+    <meta name="theme-color" content="#222222" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://jamesfchen.github.io/blog/js/jquery.min.js"></script>
+    <script src="https://jamesfchen.github.io/blog/js/bootstrap.min.js"></script>
+    <script src="https://jamesfchen.github.io/blog/js/header.js"></script>
+    <script src="https://jamesfchen.github.io/blog/js/toc.js"></script>
+    <link
+      href="https://jamesfchen.github.io/blog/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://jamesfchen.github.io/blog/css/theme.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://jamesfchen.github.io/blog/css/syntax.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://jamesfchen.github.io/blog/css/font-awesome/css/font-awesome.min.css"
+      rel="stylesheet"
+    />
+  </head>
+
+  <body>
+    
+ 
+
+
+    <script type="text/javascript">
+      const DELAY = 3000;
+      WebFontConfig = {
+        google: {
+          families: ["Ubuntu::latin"]
+        }
+      };
+      (function() {
+        var wf = document.createElement("script");
+        wf.src =
+          ("https:" == document.location.protocol ? "https" : "http") +
+          "://ajax.googleapis.com/ajax/libs/webfont/1/webfont.js";
+        wf.type = "text/javascript";
+        wf.async = "true";
+        var s = document.getElementsByTagName("script")[0];
+        s.parentNode.insertBefore(wf, s);
+        // var screenHeight = $('body').height()
+        // debug,%s,%d,%o,%f
+        console.log("window.location.href:%s", window.location.href);
+        console.log("window.location.host:%s", window.location.origin);
+        // log
+        // info
+        // warn
+        // error
+        if (window.location.href == window.location.origin + "/blog/") {
+          setTimeout(() => {
+            // $('.mask').css({"transform":"translate(100px,100px)"});​
+            $(".mask").addClass("animate-scroll");
+          }, DELAY);
+        } else {
+          $(".mask").css({ display: "none" });
+        }
+      })();
+    </script>
+
+    <nav class="navbar navbar-inverse navbar-fixed-top">
+      <div class="container">
+        <div class="navbar-header">
+          <button
+            type="button"
+            class="navbar-toggle"
+            data-toggle="collapse"
+            data-target=".navbar-collapse"
+          >
+            <span class="icon-bar"></span> <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a
+            class="navbar-brand"
+            href="https://jamesfchen.github.io/blog/"
+            >电解质</a
+          >
+        </div>
+        <div class="collapse navbar-collapse">
+          <ul class="nav navbar-nav">
+            <li><a href="https://jamesfchen.github.io/blog/">Home</a></li>
+            <li>
+              <a href="https://jamesfchen.github.io/blog/archive.html"
+                >Archive</a
+              >
+            </li>
+            <li>
+              <a href="https://jamesfchen.github.io/blog/tags.html"
+                >Tags</a
+              >
+            </li>
+            <li>
+              <a href="https://jamesfchen.github.io/blog/about.html"
+                >About</a
+              >
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+  </body>
+</html>
+
+
+<div class="wrapper">
+  <div class="content">
+    <div class="container container-center">
+      <div class="row">
+        <div class="col-md-8">
+          <div class="article">
+            <div class="well">
+
+              <h1>
+                <a href="https://jamesfchen.github.io/blog/2021-04-28/network-okhttp-connection">网络 --- Okhttp Connection的备胎之路</a>
+              </h1>
+              <div class="post-meta">
+
+                <div class="post-time">
+                  <i class="fa fa-calendar"></i>
+                  <!-- <time>Wed, 28 Apr 2021 22:50:00 +0000</time> -->
+                  <time datetime='2021-04-28'>Wed, Apr 28 2021, 22:50</time>
+                  
+                </div>
+
+                <!-- <ul> -->
+                  <!-- <li>该文章累计文字 :15159</li> -->
+                <!-- </ul> -->
+
+                <ul>
+                  
+                  <li>
+                    <a href="https://jamesfchen.github.io/blog/tag/app-design/network">app-design/network</a>
+                  </li>
+                  
+                </ul>
+              </div>
+              <div class="post-content">
+                <div id="toc" class="toc"></div>
+                <h2 id="1summary"><em class="header2-font">1.Summary</em></h2>
+<p>整理技术笔记才发现还有一些文章草稿没有收尾，2018年写到一半的文章准备发博客却因为一些不可控制的外力导致搁置，现在重新拿出来并且整理一下。Okhttp系列 ，I‘m back.</p>
+<h2 id="2introduction"><em class="header2-font">2.Introduction</em></h2>
+<p>前面我们在Okhttp和Volley这两个开源项目比较重试/重定向、缓存、请求池的设计 ，出门左转文件传送门<a href="/blog/2018-04-19/network-volley-okhttp">网络 — Volley vs. OkHttp</a>，接下来我们只讲Okhttp怎么设计连接池。</p>
+
+<p>这还得从一个call调用开始说起，当应用层调用请求，紧接而来的就是责任链的一系列调用，对于责任链模式可以看这里的<a href="https://github.com/JamesfChen/DesignPatterns/blob/master/src/main/java/behavioral/JavaChainOfResponsibility.java">JavaChainOfResponsibility</a>。简单理解就是一个请求经过一条链式时，链上的每个节点会根据情况选择性的处理，如果其中有一节点不处理了往下的节点也就不会处理了。咦？这味道是不是有点熟悉，Android View树事件的分发。我们再把话题重新拉回来，在Okhttp中称呼这条链上的节点叫做拦截器，从应用层往下分别是：RetryAndFollowUpInterceptor、BridgeInterceptor、CacheInterceptor、ConnectInterceptor、CallServerInterceptor，这一节我们要将的就是ConnectInterceptor这个拦截器了。</p>
+
+<p>ConnectInterceptor的代码不多，但是其实都是被封装起来了，让我们来一层层剥开它。</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">object</span> <span class="nc">ConnectInterceptor</span> <span class="o">:</span> <span class="nc">Interceptor</span> <span class="o">{</span>
+
+  <span class="nd">@Throws</span><span class="o">(</span><span class="nl">IOException:</span><span class="o">:</span><span class="kd">class</span><span class="err">)</span>
+  <span class="nc">override</span> <span class="n">fun</span> <span class="nf">intercept</span><span class="o">(</span><span class="nl">chain:</span> <span class="nc">Interceptor</span><span class="o">.</span><span class="na">Chain</span><span class="o">):</span> <span class="nc">Response</span> <span class="o">{</span>
+    <span class="n">val</span> <span class="n">realChain</span> <span class="o">=</span> <span class="n">chain</span> <span class="n">as</span> <span class="nc">RealInterceptorChain</span>
+    <span class="n">val</span> <span class="n">request</span> <span class="o">=</span> <span class="n">realChain</span><span class="o">.</span><span class="na">request</span><span class="o">()</span>
+    <span class="n">val</span> <span class="n">transmitter</span> <span class="o">=</span> <span class="n">realChain</span><span class="o">.</span><span class="na">transmitter</span><span class="o">()</span>
+
+    <span class="c1">// We need the network to satisfy this request. Possibly for validating a conditional GET.</span>
+    <span class="n">val</span> <span class="n">doExtensiveHealthChecks</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="na">method</span> <span class="o">!=</span> <span class="s">"GET"</span>
+    <span class="n">val</span> <span class="n">exchange</span> <span class="o">=</span> <span class="n">transmitter</span><span class="o">.</span><span class="na">newExchange</span><span class="o">(</span><span class="n">chain</span><span class="o">,</span> <span class="n">doExtensiveHealthChecks</span><span class="o">)</span>
+
+    <span class="k">return</span> <span class="n">realChain</span><span class="o">.</span><span class="na">proceed</span><span class="o">(</span><span class="n">request</span><span class="o">,</span> <span class="n">transmitter</span><span class="o">,</span> <span class="n">exchange</span><span class="o">)</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+<p>先来认识几个重要的角色</p>
+
+<ul>
+  <li>Exchange:数据交换器</li>
+  <li>ExchangeCodec：数据交换器的流编解码模块，用于处理http1.x还是http2.x协议</li>
+  <li>ExchangeFinder：数据交换器的流编解码模块的finder</li>
+  <li>Connection：连接器</li>
+  <li>Transmitter：发射器(由数据交换器+连接器构成)</li>
+  <li>Route/RouteSelector：网络路由/路由选择器，网络路由持有代理对象，如果当前网络不可用可以切换Proxy提供的线路，我们经常看到视频网站的某个视频会提供很多个数据源线路</li>
+  <li>Proxy/ProxySelector：代理/代理选择器</li>
+</ul>
+
+<p>首先Transmitter(<code class="language-plaintext highlighter-rouge">OkHttp最新代码(commit-id 4ebc5f644c92ad08e41908db2ccaff4819cd0cbe)已经没有这个类了，被合并到RealCall,不过对于那些被封装的代码来说不过是换了个妈，本质没变</code>)是应用层和网络层的桥(这里应用层和网络层指的是Okhttp定义的，BridgeInterceptor以上为应用层，往下为网络层)，它管理者Exchange和Connection，可以认为一个call就会有一个Transmitter用于创造属于这个call调用的交互器Exchange和端与端的连接器Connection，所以上面的代码不难看出newExchange方法的意思。</p>
+
+<p class="filename">Transmitter</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  <span class="n">internal</span> <span class="n">fun</span> <span class="nf">newExchange</span><span class="o">(</span><span class="nl">chain:</span> <span class="nc">Interceptor</span><span class="o">.</span><span class="na">Chain</span><span class="o">,</span> <span class="nl">doExtensiveHealthChecks:</span> <span class="nc">Boolean</span><span class="o">):</span> <span class="nc">Exchange</span> <span class="o">{</span>
+    <span class="kd">synchronized</span><span class="o">(</span><span class="n">connectionPool</span><span class="o">)</span> <span class="o">{</span>
+      <span class="n">check</span><span class="o">(!</span><span class="n">noMoreExchanges</span><span class="o">)</span> <span class="o">{</span> <span class="s">"released"</span> <span class="o">}</span>
+      <span class="n">check</span><span class="o">(</span><span class="n">exchange</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+        <span class="s">"cannot make a new request because the previous response is still open: "</span> <span class="o">+</span>
+            <span class="s">"please call response.close()"</span>
+      <span class="o">}</span>
+    <span class="o">}</span>
+
+    <span class="n">val</span> <span class="n">codec</span> <span class="o">=</span> <span class="n">exchangeFinder</span><span class="o">!!.</span><span class="na">find</span><span class="o">(</span><span class="n">client</span><span class="o">,</span> <span class="n">chain</span><span class="o">,</span> <span class="n">doExtensiveHealthChecks</span><span class="o">)</span>
+    <span class="n">val</span> <span class="n">result</span> <span class="o">=</span> <span class="nc">Exchange</span><span class="o">(</span><span class="k">this</span><span class="o">,</span> <span class="n">call</span><span class="o">,</span> <span class="n">eventListener</span><span class="o">,</span> <span class="n">exchangeFinder</span><span class="o">!!,</span> <span class="n">codec</span><span class="o">)</span>
+
+    <span class="kd">synchronized</span><span class="o">(</span><span class="n">connectionPool</span><span class="o">)</span> <span class="o">{</span>
+      <span class="k">this</span><span class="o">.</span><span class="na">exchange</span> <span class="o">=</span> <span class="n">result</span>
+      <span class="k">this</span><span class="o">.</span><span class="na">exchangeRequestDone</span> <span class="o">=</span> <span class="kc">false</span>
+      <span class="k">this</span><span class="o">.</span><span class="na">exchangeResponseDone</span> <span class="o">=</span> <span class="kc">false</span>
+      <span class="k">return</span> <span class="n">result</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+</code></pre></div></div>
+
+<p>紧接着我们看到了通过finder找到了交换器的编解码模块，那么如何找到的呢？</p>
+
+<p class="filename">ExchangeFinder</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  <span class="n">fun</span> <span class="nf">find</span><span class="o">(</span>
+    <span class="o">...</span>
+  <span class="o">):</span> <span class="nc">ExchangeCodec</span> <span class="o">{</span>
+    <span class="o">...</span>
+    <span class="k">try</span> <span class="o">{</span>
+      <span class="n">val</span> <span class="n">resultConnection</span> <span class="o">=</span> <span class="n">findHealthyConnection</span><span class="o">(</span>
+        <span class="o">...</span>
+      <span class="o">)</span>
+      <span class="k">return</span> <span class="n">resultConnection</span><span class="o">.</span><span class="na">newCodec</span><span class="o">(</span><span class="n">client</span><span class="o">,</span> <span class="n">chain</span><span class="o">)</span>
+    <span class="o">...</span>
+  <span class="o">}</span>
+  <span class="o">...</span>
+  <span class="nd">@Throws</span><span class="o">(</span><span class="nl">IOException:</span><span class="o">:</span><span class="kd">class</span><span class="err">)</span>
+  <span class="nc">private</span> <span class="n">fun</span> <span class="nf">findHealthyConnection</span><span class="o">(</span>
+    <span class="o">...</span>
+  <span class="o">):</span> <span class="nc">RealConnection</span> <span class="o">{</span>
+    <span class="k">while</span> <span class="o">(</span><span class="kc">true</span><span class="o">)</span> <span class="o">{</span>
+      <span class="n">val</span> <span class="n">candidate</span> <span class="o">=</span> <span class="n">findConnection</span><span class="o">(</span>
+          <span class="n">connectTimeout</span> <span class="o">=</span> <span class="n">connectTimeout</span><span class="o">,</span>
+          <span class="n">readTimeout</span> <span class="o">=</span> <span class="n">readTimeout</span><span class="o">,</span>
+          <span class="n">writeTimeout</span> <span class="o">=</span> <span class="n">writeTimeout</span><span class="o">,</span>
+          <span class="n">pingIntervalMillis</span> <span class="o">=</span> <span class="n">pingIntervalMillis</span><span class="o">,</span>
+          <span class="n">connectionRetryEnabled</span> <span class="o">=</span> <span class="n">connectionRetryEnabled</span>
+      <span class="o">)</span>
+
+      <span class="c1">// If this is a brand new connection, we can skip the extensive health checks.</span>
+      <span class="kd">synchronized</span><span class="o">(</span><span class="n">connectionPool</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">candidate</span><span class="o">.</span><span class="na">successCount</span> <span class="o">==</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+          <span class="k">return</span> <span class="n">candidate</span>
+        <span class="o">}</span>
+      <span class="o">}</span>
+
+      <span class="c1">// Do a (potentially slow) check to confirm that the pooled connection is still good. If it</span>
+      <span class="c1">// isn't, take it out of the pool and start again.</span>
+      <span class="k">if</span> <span class="o">(!</span><span class="n">candidate</span><span class="o">.</span><span class="na">isHealthy</span><span class="o">(</span><span class="n">doExtensiveHealthChecks</span><span class="o">))</span> <span class="o">{</span>
+        <span class="n">candidate</span><span class="o">.</span><span class="na">noNewExchanges</span><span class="o">()</span>
+        <span class="k">continue</span>
+      <span class="o">}</span>
+
+      <span class="k">return</span> <span class="n">candidate</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+</code></pre></div></div>
+<p>代码也很简单，真正难点在于findConnection方法如何找有有效的备胎。</p>
+
+<p class="filename">ExchangeFinder</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code> <span class="nd">@Throws</span><span class="o">(</span><span class="nl">IOException:</span><span class="o">:</span><span class="kd">class</span><span class="err">)</span>
+  <span class="nc">private</span> <span class="n">fun</span> <span class="nf">findConnection</span><span class="o">(</span>
+    <span class="o">...</span>
+  <span class="o">):</span> <span class="nc">RealConnection</span> <span class="o">{</span>
+    <span class="o">...</span>
+    <span class="kd">synchronized</span><span class="o">(</span><span class="n">connectionPool</span><span class="o">)</span> <span class="o">{</span>
+      <span class="k">if</span> <span class="o">(</span><span class="n">transmitter</span><span class="o">.</span><span class="na">isCanceled</span><span class="o">)</span> <span class="k">throw</span> <span class="nc">IOException</span><span class="o">(</span><span class="s">"Canceled"</span><span class="o">)</span>
+      <span class="n">hasStreamFailure</span> <span class="o">=</span> <span class="kc">false</span> <span class="c1">// This is a fresh attempt.</span>
+
+      <span class="n">releasedConnection</span> <span class="o">=</span> <span class="n">transmitter</span><span class="o">.</span><span class="na">connection</span>
+      <span class="n">toClose</span> <span class="o">=</span> <span class="k">if</span> <span class="o">(</span><span class="n">transmitter</span><span class="o">.</span><span class="na">connection</span> <span class="o">!=</span> <span class="kc">null</span> <span class="o">&amp;&amp;</span> <span class="n">transmitter</span><span class="o">.</span><span class="na">connection</span><span class="o">!!.</span><span class="na">noNewExchanges</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">transmitter</span><span class="o">.</span><span class="na">releaseConnectionNoEvents</span><span class="o">()</span>
+      <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+        <span class="kc">null</span>
+      <span class="o">}</span>
+
+      <span class="k">if</span> <span class="o">(</span><span class="n">transmitter</span><span class="o">.</span><span class="na">connection</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+        <span class="c1">// We had an already-allocated connection and it's good.</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">transmitter</span><span class="o">.</span><span class="na">connection</span>
+        <span class="n">releasedConnection</span> <span class="o">=</span> <span class="kc">null</span>
+      <span class="o">}</span>
+
+      <span class="k">if</span> <span class="o">(</span><span class="n">result</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+        <span class="c1">// Attempt to get a connection from the pool.</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">connectionPool</span><span class="o">.</span><span class="na">transmitterAcquirePooledConnection</span><span class="o">(</span><span class="n">address</span><span class="o">,</span> <span class="n">transmitter</span><span class="o">,</span> <span class="kc">null</span><span class="o">,</span> <span class="kc">false</span><span class="o">))</span> <span class="o">{</span>
+          <span class="n">foundPooledConnection</span> <span class="o">=</span> <span class="kc">true</span>
+          <span class="n">result</span> <span class="o">=</span> <span class="n">transmitter</span><span class="o">.</span><span class="na">connection</span>
+        <span class="o">}</span> <span class="k">else</span> <span class="k">if</span> <span class="o">(</span><span class="n">nextRouteToTry</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+          <span class="n">selectedRoute</span> <span class="o">=</span> <span class="n">nextRouteToTry</span>
+          <span class="n">nextRouteToTry</span> <span class="o">=</span> <span class="kc">null</span>
+        <span class="o">}</span> <span class="k">else</span> <span class="k">if</span> <span class="o">(</span><span class="n">retryCurrentRoute</span><span class="o">())</span> <span class="o">{</span>
+          <span class="n">selectedRoute</span> <span class="o">=</span> <span class="n">transmitter</span><span class="o">.</span><span class="na">connection</span><span class="o">!!.</span><span class="na">route</span><span class="o">()</span>
+        <span class="o">}</span>
+      <span class="o">}</span>
+    <span class="o">}</span>
+    <span class="o">...</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">result</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+      <span class="c1">// If we found an already-allocated or pooled connection, we're done.</span>
+      <span class="k">return</span> <span class="n">result</span><span class="o">!!</span>
+    <span class="o">}</span>
+
+    <span class="c1">// If we need a route selection, make one. This is a blocking operation.</span>
+    <span class="kt">var</span> <span class="n">newRouteSelection</span> <span class="o">=</span> <span class="kc">false</span>
+    <span class="nf">if</span> <span class="o">(</span><span class="n">selectedRoute</span> <span class="o">==</span> <span class="kc">null</span> <span class="o">&amp;&amp;</span> <span class="o">(</span><span class="n">routeSelection</span> <span class="o">==</span> <span class="kc">null</span> <span class="o">||</span> <span class="o">!</span><span class="n">routeSelection</span><span class="o">!!.</span><span class="na">hasNext</span><span class="o">()))</span> <span class="o">{</span>
+      <span class="n">newRouteSelection</span> <span class="o">=</span> <span class="kc">true</span>
+      <span class="n">routeSelection</span> <span class="o">=</span> <span class="n">routeSelector</span><span class="o">.</span><span class="na">next</span><span class="o">()</span>
+    <span class="o">}</span>
+
+    <span class="kt">var</span> <span class="nl">routes:</span> <span class="nc">List</span><span class="o">&lt;</span><span class="nc">Route</span><span class="o">&gt;?</span> <span class="o">=</span> <span class="kc">null</span>
+    <span class="nf">synchronized</span><span class="o">(</span><span class="n">connectionPool</span><span class="o">)</span> <span class="o">{</span>
+      <span class="k">if</span> <span class="o">(</span><span class="n">transmitter</span><span class="o">.</span><span class="na">isCanceled</span><span class="o">)</span> <span class="k">throw</span> <span class="nc">IOException</span><span class="o">(</span><span class="s">"Canceled"</span><span class="o">)</span>
+
+      <span class="k">if</span> <span class="o">(</span><span class="n">newRouteSelection</span><span class="o">)</span> <span class="o">{</span>
+        <span class="c1">// Now that we have a set of IP addresses, make another attempt at getting a connection from</span>
+        <span class="c1">// the pool. This could match due to connection coalescing.</span>
+        <span class="n">routes</span> <span class="o">=</span> <span class="n">routeSelection</span><span class="o">!!.</span><span class="na">routes</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">connectionPool</span><span class="o">.</span><span class="na">transmitterAcquirePooledConnection</span><span class="o">(</span>
+                <span class="n">address</span><span class="o">,</span> <span class="n">transmitter</span><span class="o">,</span> <span class="n">routes</span><span class="o">,</span> <span class="kc">false</span><span class="o">))</span> <span class="o">{</span>
+          <span class="n">foundPooledConnection</span> <span class="o">=</span> <span class="kc">true</span>
+          <span class="n">result</span> <span class="o">=</span> <span class="n">transmitter</span><span class="o">.</span><span class="na">connection</span>
+        <span class="o">}</span>
+      <span class="o">}</span>
+
+      <span class="k">if</span> <span class="o">(!</span><span class="n">foundPooledConnection</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">selectedRoute</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+          <span class="n">selectedRoute</span> <span class="o">=</span> <span class="n">routeSelection</span><span class="o">!!.</span><span class="na">next</span><span class="o">()</span>
+        <span class="o">}</span>
+
+        <span class="c1">// Create a connection and assign it to this allocation immediately. This makes it possible</span>
+        <span class="c1">// for an asynchronous cancel() to interrupt the handshake we're about to do.</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="nc">RealConnection</span><span class="o">(</span><span class="n">connectionPool</span><span class="o">,</span> <span class="n">selectedRoute</span><span class="o">!!)</span>
+        <span class="n">connectingConnection</span> <span class="o">=</span> <span class="n">result</span>
+      <span class="o">}</span>
+    <span class="o">}</span>
+
+    <span class="c1">// If we found a pooled connection on the 2nd time around, we're done.</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">foundPooledConnection</span><span class="o">)</span> <span class="o">{</span>
+      <span class="n">eventListener</span><span class="o">.</span><span class="na">connectionAcquired</span><span class="o">(</span><span class="n">call</span><span class="o">,</span> <span class="n">result</span><span class="o">!!)</span>
+      <span class="k">return</span> <span class="n">result</span><span class="o">!!</span>
+    <span class="o">}</span>
+    <span class="o">...</span>
+  <span class="o">}</span>
+</code></pre></div></div>
+<ol>
+  <li>transmitter.connection</li>
+  <li>RealConnectionPool#transmitterAcquirePooledConnection</li>
+  <li>new RealConnection</li>
+</ol>
+
+<p>查看可用的备胎遵循这一定的规则，不是什么阿猫阿狗都能当备胎。首先最好是能有当备胎的经验，从零开始培养一个备胎远比已经当过备胎更加耗费资源，创建一个连接是需要调用系统资源的。如果在Transmitter中找不到这个连接，再去连接池找到(RealConnectionPool#transmitterAcquirePooledConnection方法找)，毕竟身边有现成的在跑到备胎池到处找来得快，最后真不行只能自己动用一切资源培养一个备胎。</p>
+
+<p>比较难的地方在于连接池的查找，第一次查找时仅仅通过请求的host和复用的连接host相同就能找复用的连接，如果不存在这样的连接，那么这时候就要切换路由，路由线路的数量来源于上层应用提供了多少代理。</p>
+
+<p class="filename">RouteSelector</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  <span class="kd">private</span> <span class="n">fun</span> <span class="nf">resetNextInetSocketAddress</span><span class="o">(</span><span class="nl">proxy:</span> <span class="nc">Proxy</span><span class="o">)</span> <span class="o">{</span>
+    <span class="c1">// Clear the addresses. Necessary if getAllByName() below throws!</span>
+    <span class="n">val</span> <span class="n">mutableInetSocketAddresses</span> <span class="o">=</span> <span class="n">mutableListOf</span><span class="o">&lt;</span><span class="nc">InetSocketAddress</span><span class="o">&gt;()</span>
+    <span class="n">inetSocketAddresses</span> <span class="o">=</span> <span class="n">mutableInetSocketAddresses</span>
+
+    <span class="n">val</span> <span class="nl">socketHost:</span> <span class="nc">String</span>
+    <span class="n">val</span> <span class="nl">socketPort:</span> <span class="nc">Int</span>
+    <span class="nf">if</span> <span class="o">(</span><span class="n">proxy</span><span class="o">.</span><span class="na">type</span><span class="o">()</span> <span class="o">==</span> <span class="nc">Proxy</span><span class="o">.</span><span class="na">Type</span><span class="o">.</span><span class="na">DIRECT</span> <span class="o">||</span> <span class="n">proxy</span><span class="o">.</span><span class="na">type</span><span class="o">()</span> <span class="o">==</span> <span class="nc">Proxy</span><span class="o">.</span><span class="na">Type</span><span class="o">.</span><span class="na">SOCKS</span><span class="o">)</span> <span class="o">{</span>
+      <span class="n">socketHost</span> <span class="o">=</span> <span class="n">address</span><span class="o">.</span><span class="na">url</span><span class="o">.</span><span class="na">host</span>
+      <span class="n">socketPort</span> <span class="o">=</span> <span class="n">address</span><span class="o">.</span><span class="na">url</span><span class="o">.</span><span class="na">port</span>
+    <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+      <span class="n">val</span> <span class="n">proxyAddress</span> <span class="o">=</span> <span class="n">proxy</span><span class="o">.</span><span class="na">address</span><span class="o">()</span>
+      <span class="n">require</span><span class="o">(</span><span class="n">proxyAddress</span> <span class="n">is</span> <span class="nc">InetSocketAddress</span><span class="o">)</span> <span class="o">{</span>
+        <span class="s">"Proxy.address() is not an InetSocketAddress: ${proxyAddress.javaClass}"</span>
+      <span class="o">}</span>
+      <span class="n">socketHost</span> <span class="o">=</span> <span class="n">proxyAddress</span><span class="o">.</span><span class="na">socketHost</span>
+      <span class="n">socketPort</span> <span class="o">=</span> <span class="n">proxyAddress</span><span class="o">.</span><span class="na">port</span>
+    <span class="o">}</span>
+
+    <span class="k">if</span> <span class="o">(</span><span class="n">socketPort</span> <span class="o">!</span><span class="n">in</span> <span class="mi">1</span><span class="o">..</span><span class="mi">65535</span><span class="o">)</span> <span class="o">{</span>
+      <span class="k">throw</span> <span class="nf">SocketException</span><span class="o">(</span><span class="s">"No route to $socketHost:$socketPort; port is out of range"</span><span class="o">)</span>
+    <span class="o">}</span>
+
+    <span class="k">if</span> <span class="o">(</span><span class="n">proxy</span><span class="o">.</span><span class="na">type</span><span class="o">()</span> <span class="o">==</span> <span class="nc">Proxy</span><span class="o">.</span><span class="na">Type</span><span class="o">.</span><span class="na">SOCKS</span><span class="o">)</span> <span class="o">{</span>
+      <span class="n">mutableInetSocketAddresses</span> <span class="o">+=</span> <span class="nc">InetSocketAddress</span><span class="o">.</span><span class="na">createUnresolved</span><span class="o">(</span><span class="n">socketHost</span><span class="o">,</span> <span class="n">socketPort</span><span class="o">)</span>
+    <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+      <span class="n">eventListener</span><span class="o">.</span><span class="na">dnsStart</span><span class="o">(</span><span class="n">call</span><span class="o">,</span> <span class="n">socketHost</span><span class="o">)</span>
+
+      <span class="c1">// Try each address for best behavior in mixed IPv4/IPv6 environments.</span>
+      <span class="n">val</span> <span class="n">addresses</span> <span class="o">=</span> <span class="n">address</span><span class="o">.</span><span class="na">dns</span><span class="o">.</span><span class="na">lookup</span><span class="o">(</span><span class="n">socketHost</span><span class="o">)</span>
+      <span class="k">if</span> <span class="o">(</span><span class="n">addresses</span><span class="o">.</span><span class="na">isEmpty</span><span class="o">())</span> <span class="o">{</span>
+        <span class="k">throw</span> <span class="nf">UnknownHostException</span><span class="o">(</span><span class="s">"${address.dns} returned no addresses for $socketHost"</span><span class="o">)</span>
+      <span class="o">}</span>
+
+      <span class="n">eventListener</span><span class="o">.</span><span class="na">dnsEnd</span><span class="o">(</span><span class="n">call</span><span class="o">,</span> <span class="n">socketHost</span><span class="o">,</span> <span class="n">addresses</span><span class="o">)</span>
+
+      <span class="k">for</span> <span class="o">(</span><span class="n">inetAddress</span> <span class="n">in</span> <span class="n">addresses</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">mutableInetSocketAddresses</span> <span class="o">+=</span> <span class="nc">InetSocketAddress</span><span class="o">(</span><span class="n">inetAddress</span><span class="o">,</span> <span class="n">socketPort</span><span class="o">)</span>
+      <span class="o">}</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+</code></pre></div></div>
+<p>当然了也不是所有的代理都能用，如果是http代理和http直连，RouteSelector就会用host通过dns查找可用的ip地址集合；如果是socks代理，RouteSelector就提供一条ip线路</p>
+
+<p>找到了可用的路由，接下来就再次去连接池查找连接，由于向连接池提供了可用的路由，那么不在像第一次只提供host而找不到连接，连接池还会在通过路由这一筛选条件，不过可用路由必须和复用的连接一样是直连并且地址相同。这里还有一点对于需要主机验证的连接是不能被复用的</p>
+
+<p>如果还是找不到怎么办？构造一个全新连接,构造新的连接，必然要和服务器进行三次握手有可能也要进行TLS连接。</p>
+
+<p class="filename">ExchangeFinder</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  <span class="nd">@Throws</span><span class="o">(</span><span class="nl">IOException:</span><span class="o">:</span><span class="kd">class</span><span class="err">)</span>
+  <span class="nc">private</span> <span class="n">fun</span> <span class="nf">findConnection</span><span class="o">(</span>
+    <span class="o">...</span>
+  <span class="o">):</span> <span class="nc">RealConnection</span> <span class="o">{</span>
+    <span class="o">...</span>
+    <span class="c1">// Do TCP + TLS handshakes. This is a blocking operation.</span>
+    <span class="n">result</span><span class="o">!!.</span><span class="na">connect</span><span class="o">(</span>
+        <span class="n">connectTimeout</span><span class="o">,</span>
+        <span class="n">readTimeout</span><span class="o">,</span>
+        <span class="n">writeTimeout</span><span class="o">,</span>
+        <span class="n">pingIntervalMillis</span><span class="o">,</span>
+        <span class="n">connectionRetryEnabled</span><span class="o">,</span>
+        <span class="n">call</span><span class="o">,</span>
+        <span class="n">eventListener</span>
+    <span class="o">)</span>
+    <span class="n">connectionPool</span><span class="o">.</span><span class="na">routeDatabase</span><span class="o">.</span><span class="na">connected</span><span class="o">(</span><span class="n">result</span><span class="o">!!.</span><span class="na">route</span><span class="o">())</span>
+
+    <span class="kt">var</span> <span class="nl">socket:</span> <span class="nc">Socket</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span>
+    <span class="nf">synchronized</span><span class="o">(</span><span class="n">connectionPool</span><span class="o">)</span> <span class="o">{</span>
+      <span class="n">connectingConnection</span> <span class="o">=</span> <span class="kc">null</span>
+      <span class="c1">// Last attempt at connection coalescing, which only occurs if we attempted multiple</span>
+      <span class="c1">// concurrent connections to the same host.</span>
+      <span class="k">if</span> <span class="o">(</span><span class="n">connectionPool</span><span class="o">.</span><span class="na">transmitterAcquirePooledConnection</span><span class="o">(</span><span class="n">address</span><span class="o">,</span> <span class="n">transmitter</span><span class="o">,</span> <span class="n">routes</span><span class="o">,</span> <span class="kc">true</span><span class="o">))</span> <span class="o">{</span>
+        <span class="c1">// We lost the race! Close the connection we created and return the pooled connection.</span>
+        <span class="n">result</span><span class="o">!!.</span><span class="na">noNewExchanges</span> <span class="o">=</span> <span class="kc">true</span>
+        <span class="n">socket</span> <span class="o">=</span> <span class="n">result</span><span class="o">!!.</span><span class="na">socket</span><span class="o">()</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">transmitter</span><span class="o">.</span><span class="na">connection</span>
+      <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+        <span class="n">connectionPool</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">result</span><span class="o">!!)</span>
+        <span class="n">transmitter</span><span class="o">.</span><span class="na">acquireConnectionNoEvents</span><span class="o">(</span><span class="n">result</span><span class="o">!!)</span>
+      <span class="o">}</span>
+    <span class="o">}</span>
+    <span class="n">socket</span><span class="o">?.</span><span class="na">closeQuietly</span><span class="o">()</span>
+
+    <span class="n">eventListener</span><span class="o">.</span><span class="na">connectionAcquired</span><span class="o">(</span><span class="n">call</span><span class="o">,</span> <span class="n">result</span><span class="o">!!)</span>
+    <span class="k">return</span> <span class="n">result</span><span class="o">!!</span>
+    <span class="o">...</span>
+  <span class="o">}</span>
+</code></pre></div></div>
+<p>到这里我们就看到了，连接之后就放入连接池，成为她人的备胎。那么对于tcp的握手过程，究竟做了什么？为什么成为备胎要经历这么多的艰辛。</p>
+
+<p class="filename">RealConnection</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  <span class="n">fun</span> <span class="nf">connect</span><span class="o">(</span>
+    <span class="nl">connectTimeout:</span> <span class="nc">Int</span><span class="o">,</span>
+    <span class="nl">readTimeout:</span> <span class="nc">Int</span><span class="o">,</span>
+    <span class="nl">writeTimeout:</span> <span class="nc">Int</span><span class="o">,</span>
+    <span class="nl">pingIntervalMillis:</span> <span class="nc">Int</span><span class="o">,</span>
+    <span class="nl">connectionRetryEnabled:</span> <span class="nc">Boolean</span><span class="o">,</span>
+    <span class="nl">call:</span> <span class="nc">Call</span><span class="o">,</span>
+    <span class="nl">eventListener:</span> <span class="nc">EventListener</span>
+  <span class="o">)</span> <span class="o">{</span>
+    <span class="n">check</span><span class="o">(</span><span class="n">protocol</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span> <span class="s">"already connected"</span> <span class="o">}</span>
+
+    <span class="kt">var</span> <span class="nl">routeException:</span> <span class="nc">RouteException</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span>
+    <span class="n">val</span> <span class="n">connectionSpecs</span> <span class="o">=</span> <span class="n">route</span><span class="o">.</span><span class="na">address</span><span class="o">.</span><span class="na">connectionSpecs</span>
+    <span class="n">val</span> <span class="n">connectionSpecSelector</span> <span class="o">=</span> <span class="nc">ConnectionSpecSelector</span><span class="o">(</span><span class="n">connectionSpecs</span><span class="o">)</span>
+    <span class="o">...</span>
+
+    <span class="k">while</span> <span class="o">(</span><span class="kc">true</span><span class="o">)</span> <span class="o">{</span>
+      <span class="k">try</span> <span class="o">{</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">route</span><span class="o">.</span><span class="na">requiresTunnel</span><span class="o">())</span> <span class="o">{</span>
+          <span class="n">connectTunnel</span><span class="o">(</span><span class="n">connectTimeout</span><span class="o">,</span> <span class="n">readTimeout</span><span class="o">,</span> <span class="n">writeTimeout</span><span class="o">,</span> <span class="n">call</span><span class="o">,</span> <span class="n">eventListener</span><span class="o">)</span>
+          <span class="k">if</span> <span class="o">(</span><span class="n">rawSocket</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+            <span class="c1">// We were unable to connect the tunnel but properly closed down our resources.</span>
+            <span class="k">break</span>
+          <span class="o">}</span>
+        <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+          <span class="n">connectSocket</span><span class="o">(</span><span class="n">connectTimeout</span><span class="o">,</span> <span class="n">readTimeout</span><span class="o">,</span> <span class="n">call</span><span class="o">,</span> <span class="n">eventListener</span><span class="o">)</span>
+        <span class="o">}</span>
+        <span class="n">establishProtocol</span><span class="o">(</span><span class="n">connectionSpecSelector</span><span class="o">,</span> <span class="n">pingIntervalMillis</span><span class="o">,</span> <span class="n">call</span><span class="o">,</span> <span class="n">eventListener</span><span class="o">)</span>
+        <span class="n">eventListener</span><span class="o">.</span><span class="na">connectEnd</span><span class="o">(</span><span class="n">call</span><span class="o">,</span> <span class="n">route</span><span class="o">.</span><span class="na">socketAddress</span><span class="o">,</span> <span class="n">route</span><span class="o">.</span><span class="na">proxy</span><span class="o">,</span> <span class="n">protocol</span><span class="o">)</span>
+        <span class="k">break</span>
+      <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="nl">e:</span> <span class="nc">IOException</span><span class="o">)</span> <span class="o">{</span>
+        <span class="o">...</span>
+
+        <span class="k">if</span> <span class="o">(</span><span class="n">routeException</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+          <span class="n">routeException</span> <span class="o">=</span> <span class="nc">RouteException</span><span class="o">(</span><span class="n">e</span><span class="o">)</span>
+        <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+          <span class="n">routeException</span><span class="o">.</span><span class="na">addConnectException</span><span class="o">(</span><span class="n">e</span><span class="o">)</span>
+        <span class="o">}</span>
+
+        <span class="k">if</span> <span class="o">(!</span><span class="n">connectionRetryEnabled</span> <span class="o">||</span> <span class="o">!</span><span class="n">connectionSpecSelector</span><span class="o">.</span><span class="na">connectionFailed</span><span class="o">(</span><span class="n">e</span><span class="o">))</span> <span class="o">{</span>
+          <span class="k">throw</span> <span class="n">routeException</span>
+        <span class="o">}</span>
+      <span class="o">}</span>
+    <span class="o">}</span>
+    <span class="o">...</span>
+    <span class="n">val</span> <span class="n">http2Connection</span> <span class="o">=</span> <span class="k">this</span><span class="o">.</span><span class="na">http2Connection</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">http2Connection</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+      <span class="kd">synchronized</span><span class="o">(</span><span class="n">connectionPool</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">allocationLimit</span> <span class="o">=</span> <span class="n">http2Connection</span><span class="o">.</span><span class="na">maxConcurrentStreams</span><span class="o">()</span>
+      <span class="o">}</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+</code></pre></div></div>
+
+<p>前面我们说过路由的查找，路由的线路连接主要通过代理，而代理又分为直连、http、socks。如果只是使用这三种代理那么网络默认是明文传输的，如果开启隧道（http代理+tls）就要求必须加密，这里说一下隧道，开启前会先发CONNECT报文进行连接。当然了这三种代理我们也可以选择性的配置tls，取决于上层应用给的规格connectionSpecs。在开启隧道过程中，客户端和代理服务器会进行鉴权，客户端要在Proxy-Authenticate字段中加入鉴权的数据。</p>
+
+<p>连接socket之后，就要看看接下来要不要tls连接了。</p>
+
+<p class="filename">RealConnection</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">private</span> <span class="n">fun</span> <span class="nf">connectTls</span><span class="o">(</span><span class="nl">connectionSpecSelector:</span> <span class="nc">ConnectionSpecSelector</span><span class="o">)</span> <span class="o">{</span>
+      <span class="n">val</span> <span class="n">address</span> <span class="o">=</span> <span class="n">route</span><span class="o">.</span><span class="na">address</span>
+    <span class="n">val</span> <span class="n">sslSocketFactory</span> <span class="o">=</span> <span class="n">address</span><span class="o">.</span><span class="na">sslSocketFactory</span>
+    <span class="kt">var</span> <span class="n">success</span> <span class="o">=</span> <span class="kc">false</span>
+    <span class="kt">var</span> <span class="nl">sslSocket:</span> <span class="nc">SSLSocket</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span>
+    <span class="k">try</span> <span class="o">{</span>
+      <span class="c1">// Create the wrapper over the connected socket.</span>
+      <span class="n">sslSocket</span> <span class="o">=</span> <span class="n">sslSocketFactory</span><span class="o">!!.</span><span class="na">createSocket</span><span class="o">(</span>
+          <span class="n">rawSocket</span><span class="o">,</span> <span class="n">address</span><span class="o">.</span><span class="na">url</span><span class="o">.</span><span class="na">host</span><span class="o">,</span> <span class="n">address</span><span class="o">.</span><span class="na">url</span><span class="o">.</span><span class="na">port</span><span class="o">,</span> <span class="kc">true</span> <span class="cm">/* autoClose */</span><span class="o">)</span> <span class="n">as</span> <span class="nc">SSLSocket</span>
+
+      <span class="c1">// Configure the socket's ciphers, TLS versions, and extensions.</span>
+      <span class="n">val</span> <span class="n">connectionSpec</span> <span class="o">=</span> <span class="n">connectionSpecSelector</span><span class="o">.</span><span class="na">configureSecureSocket</span><span class="o">(</span><span class="n">sslSocket</span><span class="o">)</span>
+      <span class="k">if</span> <span class="o">(</span><span class="n">connectionSpec</span><span class="o">.</span><span class="na">supportsTlsExtensions</span><span class="o">)</span> <span class="o">{</span>
+        <span class="nc">Platform</span><span class="o">.</span><span class="na">get</span><span class="o">().</span><span class="na">configureTlsExtensions</span><span class="o">(</span><span class="n">sslSocket</span><span class="o">,</span> <span class="n">address</span><span class="o">.</span><span class="na">url</span><span class="o">.</span><span class="na">host</span><span class="o">,</span> <span class="n">address</span><span class="o">.</span><span class="na">protocols</span><span class="o">)</span>
+      <span class="o">}</span>
+
+      <span class="c1">// Force handshake. This can throw!</span>
+      <span class="n">sslSocket</span><span class="o">.</span><span class="na">startHandshake</span><span class="o">()</span>
+      <span class="c1">// block for session establishment</span>
+      <span class="n">val</span> <span class="n">sslSocketSession</span> <span class="o">=</span> <span class="n">sslSocket</span><span class="o">.</span><span class="na">session</span>
+      <span class="n">val</span> <span class="n">unverifiedHandshake</span> <span class="o">=</span> <span class="n">sslSocketSession</span><span class="o">.</span><span class="na">handshake</span><span class="o">()</span>
+
+      <span class="c1">// Verify that the socket's certificates are acceptable for the target host.</span>
+      <span class="k">if</span> <span class="o">(!</span><span class="n">address</span><span class="o">.</span><span class="na">hostnameVerifier</span><span class="o">!!.</span><span class="na">verify</span><span class="o">(</span><span class="n">address</span><span class="o">.</span><span class="na">url</span><span class="o">.</span><span class="na">host</span><span class="o">,</span> <span class="n">sslSocketSession</span><span class="o">))</span> <span class="o">{</span>
+        <span class="o">...</span>
+      <span class="o">}</span>
+
+      <span class="n">val</span> <span class="n">certificatePinner</span> <span class="o">=</span> <span class="n">address</span><span class="o">.</span><span class="na">certificatePinner</span><span class="o">!!</span>
+
+      <span class="n">handshake</span> <span class="o">=</span> <span class="nc">Handshake</span><span class="o">(</span><span class="n">unverifiedHandshake</span><span class="o">.</span><span class="na">tlsVersion</span><span class="o">,</span> <span class="n">unverifiedHandshake</span><span class="o">.</span><span class="na">cipherSuite</span><span class="o">,</span>
+          <span class="n">unverifiedHandshake</span><span class="o">.</span><span class="na">localCertificates</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">certificatePinner</span><span class="o">.</span><span class="na">certificateChainCleaner</span><span class="o">!!.</span><span class="na">clean</span><span class="o">(</span><span class="n">unverifiedHandshake</span><span class="o">.</span><span class="na">peerCertificates</span><span class="o">,</span>
+            <span class="n">address</span><span class="o">.</span><span class="na">url</span><span class="o">.</span><span class="na">host</span><span class="o">)</span>
+      <span class="o">}</span>
+
+      <span class="c1">// Check that the certificate pinner is satisfied by the certificates presented.</span>
+      <span class="n">certificatePinner</span><span class="o">.</span><span class="na">check</span><span class="o">(</span><span class="n">address</span><span class="o">.</span><span class="na">url</span><span class="o">.</span><span class="na">host</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">handshake</span><span class="o">!!.</span><span class="na">peerCertificates</span><span class="o">.</span><span class="na">map</span> <span class="o">{</span> <span class="n">it</span> <span class="n">as</span> <span class="nc">X509Certificate</span> <span class="o">}</span>
+      <span class="o">}</span>
+
+      <span class="c1">// Success! Save the handshake and the ALPN protocol.</span>
+      <span class="n">val</span> <span class="n">maybeProtocol</span> <span class="o">=</span> <span class="k">if</span> <span class="o">(</span><span class="n">connectionSpec</span><span class="o">.</span><span class="na">supportsTlsExtensions</span><span class="o">)</span> <span class="o">{</span>
+        <span class="nc">Platform</span><span class="o">.</span><span class="na">get</span><span class="o">().</span><span class="na">getSelectedProtocol</span><span class="o">(</span><span class="n">sslSocket</span><span class="o">)</span>
+      <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+        <span class="kc">null</span>
+      <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+<p>通过外部提供的sslSocketFactory我们构建了SSLSocket，并和服务器进行的握手，ssl握手的过程可以看这一博文，传送门<a href="/blog/2020-12-13/capture-message">抓包原理</a>。握手之后拿到证书，通过Okhttp提供的OkHostnameVerifier验证主机，当然你也可以自定义验证主机的逻辑。那么之后就完成连接。这里还要提一嘴，Okhttp项目中还提供了<code class="language-plaintext highlighter-rouge">okhttp-tls</code>，帮助我们去实现客户端服务端证书的管理。到这里我们就知道了培养备胎多么浪费资源了吧，先socket握手然后sslsocket握手，握手之后验证证书，所以能从复用就复用千万不要自己搞。</p>
+
+<p>在进行连接的过程中会出现各种不能恢复的异常</p>
+<ul>
+  <li>一些致命的异常，ProtocolException  SSLHandshakeException/CertificateException SSLPeerUnverifiedException</li>
+  <li>客户端配置要求禁止重试</li>
+  <li>没有更多可用的路由</li>
+  <li>request的body没有数据了：如果是本地路由问题，request还没有被发送body还有数据，如果是服务器问题，那么request已经被发送并且body没有了数据</li>
+</ul>
+
+<p>与上面的不可恢复的异常相对的是可以恢复的异常SocketTimeoutException，还有本地路由出现了问题，那么对于Okhttp来说会在RetryAndFollowUpInterceptor重新尝试去连接服务。</p>
+
+<p>这里我们还需要扩展一个东西。http1.x和http2的发送请求和接受响应的不同，http1.x使用了管道化发送，一个tcp连接可以多个请求可以同时发送，但是服务器却按照顺序响应；http2由于采用了stream模式，一个tcp连接上面有多个stream，可以同时多个请求的同时发送响应。上面的连接复用对于http1.x来说我们很好理解，对于http2在代码的设计上OkHttp有一点不太一样。被复用的RealConnection对象其实是持有Http2Connection对象，当然了前提是使用http2协议，复用了RealConnection对象也就相当于复用了Http2Connection对象，Http2Connection对象存储这一堆的stream，每个stream处理一对请求响应。</p>
+
+<p>你以为成为备胎就完事了？放在池子里的备胎也会只是被供挑选的对象也存在竞争，池子也遵循着末尾淘汰机制。那么这个末位淘汰机制是如何设置的？接下来看看。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  <span class="kd">private</span> <span class="n">val</span> <span class="n">cleanupTask</span> <span class="o">=</span> <span class="n">object</span> <span class="o">:</span> <span class="nc">Task</span><span class="o">(</span><span class="s">"$okHttpName ConnectionPool"</span><span class="o">)</span> <span class="o">{</span>
+    <span class="n">override</span> <span class="n">fun</span> <span class="nf">runOnce</span><span class="o">()</span> <span class="o">=</span> <span class="n">cleanup</span><span class="o">(</span><span class="nc">System</span><span class="o">.</span><span class="na">nanoTime</span><span class="o">())</span>
+  <span class="o">}</span>
+</code></pre></div></div>
+<p>每次有个新连接被put到连接池中，都会触发clean任务。它会清理那些超过保活时间5min的连接或者超过6以上个处于空闲的连接，简单说就是那些到35岁的人或者团队超过6以上长时间不干活的人。你以为这样就clean up只会发生一次，太年轻了。如果clean完一个连接，紧接着马不停蹄没有delay的又开始下一次清理。如果发现这次清理的没有超过35岁或者不干活的人低于5以下，那么就会采取两种判断，如果0&lt; 不干活人数 &lt;=5，那么就会用保活时间减去取空闲时间最长人空闲的时间(keepAliveDurationNs - longestIdleDurationNs),其差作为下次clean任务的delay，等下次clean时，如果还不干活，就clean这个人。还有一种是既然35岁还没有到，比如34岁，就等一年在把他clean掉。那么有没有一种办法终止这种末位淘汰机制，还真有，公司倒闭了没有人了，clean循环停止。</p>
+
+<h3 id="3reference"><em class="header2-font">3.Reference</em></h3>
+<p><a href="https://my.oschina.net/itblog/blog/651608">Java使用SSLSocket通信</a></p>
+
+
+                <!-- donation -->
+                <div style="padding: 10px 0; margin: 20px auto; width: 90%; text-align: center;">
+                  <div>如果您觉得写得还不错或者对您有所启发，那就赶紧动动您的小指头，点击下面的红色按钮，狠狠地打赏一番吧。
+                  </div>
+                  <br/>
+                  <button id="rewardButton" disable="enable" onclick="var qr = document.getElementById('QR'); if (qr.style.display === 'none') {qr.style.display='block';} else {qr.style.display='none'}">
+                    <span>赏</span>
+                  </button>
+                  <div id="QR" style="display: none;">
+
+                    <div id="wechat" style="display: inline-block">
+                      <img id="wechat_qr" src="/blog/asset/donation-wechat.jpg" alt="hawks jamesf WeChat Pay" />
+                      <p>微信打赏</p>
+                    </div>
+
+                    <div id="alipay" style="display: inline-block">
+                      <img id="alipay_qr" src="/blog/asset/donation-alipay.png" alt="hawks jamesf Alipay" />
+                      <p>支付宝打赏</p>
+                    </div>
+                  </div>
+                </div>
+
+                
+
+<div class="share-bar">
+  <ul class="share-buttons">
+    
+    <li class="share-facebook">
+      <a href="https://www.facebook.com/sharer/sharer.php?u=https://jamesfchen.github.io/2021-04-28/network-okhttp-connection" target="_blank" title="Share on Facebook">
+        <span class="fa-stack fa-lg">
+          <i class="fa fa-square-o fa-stack-2x"></i>
+          <i class="fa fa-facebook fa-stack-1x"></i>
+        </span>
+      </a>
+    </li>
+    
+
+    
+    <li class="share-twitter">
+      <a href="https://twitter.com/intent/tweet?url=https://jamesfchen.github.io/2021-04-28/network-okhttp-connection&text=网络 --- Okhttp Connection的备胎之路" target="_blank" title="Tweet">
+        <span class="fa-stack fa-lg">
+          <i class="fa fa-square-o fa-stack-2x"></i>
+          <i class="fa fa-twitter fa-stack-1x"></i>
+        </span>
+      </a>
+    </li>
+    
+
+    
+
+    
+    <li class="share-linkedin">
+      <a href="http://www.linkedin.com/shareArticle?mini=true&url=https://jamesfchen.github.io/2021-04-28/network-okhttp-connection&title=网络 --- Okhttp Connection的备胎之路&summary=socket管理&source=" target="_blank" title="Share on LinkedIn">
+        <span class="fa-stack fa-lg">
+          <i class="fa fa-square-o fa-stack-2x"></i>
+          <i class="fa fa-linkedin fa-stack-1x"></i>
+        </span>
+      </a>
+    </li>
+    
+
+    
+
+    
+    <li class="share-envelope">
+      <a href="mailto:?&subject=网络 --- Okhttp Connection的备胎之路&body=socket管理 https://jamesfchen.github.io/2021-04-28/network-okhttp-connection" target="_blank" title="Email">
+        <span class="fa-stack fa-lg">
+          <i class="fa fa-square-o fa-stack-2x"></i>
+          <i class="fa fa-envelope-o fa-stack-1x"></i>
+        </span>
+      </a>
+    </li>
+    
+
+  </ul>
+</div>
+
+
+              </div>
+
+              
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4 hidden-xs">
+          <div class="sidebar ">
+  <h2>Recent Posts</h2>
+  <ul>
+    
+    <li>
+      <a href="/blog/2021-05-11/network-super-retrofit">网络 --- Super Retrofit</a>
+    </li>
+    
+    <li>
+      <a href="/blog/2021-05-08/application-viewtree">再谈View树</a>
+    </li>
+    
+    <li>
+      <a href="/blog/2021-05-03/producer-consumer">生产者-消费者</a>
+    </li>
+    
+    <li>
+      <a href="/blog/2021-04-29/network-okhttp-exchange">网络 --- OkHttp的金牌讲师Exchange</a>
+    </li>
+    
+    <li>
+      <a href="/blog/2021-04-28/network-okhttp-connection">网络 --- Okhttp Connection的备胎之路</a>
+    </li>
+    
+  </ul>
+</div>
+
+<div class="sidebar">
+  <h2>Tags</h2>
+  <ul class="sideBarTags">
+    <!-- 
+      <li><a href="/blog/tag/呓语">呓语</a></li>
+      
+    
+      <li><a href="/blog/tag/elementary/language">elementary/language</a></li>
+      
+    
+      <li><a href="/blog/tag/elementary/others">elementary/others</a></li>
+      
+    
+      <li><a href="/blog/tag/tools">tools</a></li>
+      
+    
+      <li><a href="/blog/tag/inverse-engineering">inverse-engineering</a></li>
+      
+    
+      <li><a href="/blog/tag/app-design/network">app-design/network</a></li>
+      
+    
+      <li><a href="/blog/tag/build-tools">build-tools</a></li>
+      
+    
+      <li><a href="/blog/tag/cross-platform">cross-platform</a></li>
+      
+    
+      <li><a href="/blog/tag/framework-design/location">framework-design/location</a></li>
+      
+    
+      <li><a href="/blog/tag/app-design/architecture">app-design/architecture</a></li>
+      
+    
+      <li><a href="/blog/tag/framework-design/service">framework-design/service</a></li>
+      
+    
+      <li><a href="/blog/tag/framework-design/ui">framework-design/ui</a></li>
+      
+    
+      <li><a href="/blog/tag/分享">分享</a></li>
+      
+    
+      <li><a href="/blog/tag/elementary/algorithm-structure">elementary/algorithm-structure</a></li>
+      
+    
+      <li><a href="/blog/tag/app-design/image">app-design/image</a></li>
+      
+    
+      <li><a href="/blog/tag/framework-design/process">framework-design/process</a></li>
+      
+    
+      <li><a href="/blog/tag/app-design/av">app-design/av</a></li>
+      
+    
+      <li><a href="/blog/tag/elementary/async">elementary/async</a></li>
+      
+     -->
+
+     
+    <li>
+      <a href="/blog/tag/app-design/architecture" data-toggle="tooltip" data-placement="right" title="1">
+        <span>app-design/architecture</span>
+      </a>
+    </li>
+    
+    <li>
+      <a href="/blog/tag/app-design/av" data-toggle="tooltip" data-placement="right" title="4">
+        <span>app-design/av</span>
+      </a>
+    </li>
+    
+    <li>
+      <a href="/blog/tag/app-design/image" data-toggle="tooltip" data-placement="right" title="1">
+        <span>app-design/image</span>
+      </a>
+    </li>
+    
+    <li>
+      <a href="/blog/tag/app-design/network" data-toggle="tooltip" data-placement="right" title="8">
+        <span>app-design/network</span>
+      </a>
+    </li>
+    
+    <li>
+      <a href="/blog/tag/build-tools" data-toggle="tooltip" data-placement="right" title="2">
+        <span>build-tools</span>
+      </a>
+    </li>
+    
+    <li>
+      <a href="/blog/tag/cross-platform" data-toggle="tooltip" data-placement="right" title="1">
+        <span>cross-platform</span>
+      </a>
+    </li>
+    
+    <li>
+      <a href="/blog/tag/elementary/algorithm-structure" data-toggle="tooltip" data-placement="right" title="1">
+        <span>elementary/algorithm-structure</span>
+      </a>
+    </li>
+    
+    <li>
+      <a href="/blog/tag/elementary/async" data-toggle="tooltip" data-placement="right" title="1">
+        <span>elementary/async</span>
+      </a>
+    </li>
+    
+    <li>
+      <a href="/blog/tag/elementary/language" data-toggle="tooltip" data-placement="right" title="2">
+        <span>elementary/language</span>
+      </a>
+    </li>
+    
+    <li>
+      <a href="/blog/tag/elementary/others" data-toggle="tooltip" data-placement="right" title="3">
+        <span>elementary/others</span>
+      </a>
+    </li>
+    
+    <li>
+      <a href="/blog/tag/framework-design/location" data-toggle="tooltip" data-placement="right" title="6">
+        <span>framework-design/location</span>
+      </a>
+    </li>
+    
+    <li>
+      <a href="/blog/tag/framework-design/process" data-toggle="tooltip" data-placement="right" title="1">
+        <span>framework-design/process</span>
+      </a>
+    </li>
+    
+    <li>
+      <a href="/blog/tag/framework-design/service" data-toggle="tooltip" data-placement="right" title="5">
+        <span>framework-design/service</span>
+      </a>
+    </li>
+    
+    <li>
+      <a href="/blog/tag/framework-design/ui" data-toggle="tooltip" data-placement="right" title="5">
+        <span>framework-design/ui</span>
+      </a>
+    </li>
+    
+    <li>
+      <a href="/blog/tag/inverse-engineering" data-toggle="tooltip" data-placement="right" title="3">
+        <span>inverse-engineering</span>
+      </a>
+    </li>
+    
+    <li>
+      <a href="/blog/tag/tools" data-toggle="tooltip" data-placement="right" title="2">
+        <span>tools</span>
+      </a>
+    </li>
+    
+    <li>
+      <a href="/blog/tag/%E5%88%86%E4%BA%AB" data-toggle="tooltip" data-placement="right" title="3">
+        <span>分享</span>
+      </a>
+    </li>
+    
+    <li>
+      <a href="/blog/tag/%E5%91%93%E8%AF%AD" data-toggle="tooltip" data-placement="right" title="6">
+        <span>呓语</span>
+      </a>
+    </li>
+    
+  </ul>
+</div>
+        </div>
+      </div>
+    </div>
+
+
+
+    
+
+
+  </div>
+      <footer class="footer-distributed">
+      <div class="container">
+        <div class="footer">
+          <p>电解质 &copy; 2016</p>
+          <h6>Follow me</h6>
+
+<ul class="social-media">
+
+  
+  <li>
+    <a title="jamesfchen on Github" href="https://github.com/jamesfchen" target="_blank">
+      <i class="fa fa-github fa-2x"></i>
+    </a>
+  </li>
+   
+  <li>
+    <a title="6393208/hawks93jf on StackOverflow" href="http://stackoverflow.com/users/6393208/hawks93jf"
+      target="_blank">
+      <i class="fa fa-stack-overflow fa-2x"></i>
+    </a>
+  </li>
+      
+  <li>
+    <a title="feed.xml RSS" href="/blog/feed.xml" target="_blank">
+      <i class="fa fa-rss fa-2x"></i>
+    </a>
+  </li>
+   
+  <li>
+    <a title="wei-zhi-end zhihu" href="https://www.zhihu.com/people/wei-zhi-end " target="_blank">
+      <!-- <span class="fa-stack fa-lg"> -->
+      <!-- <i class="fa   fa-inverse  fa-2x">知</i> -->
+      <i class="fa   fa-stop-circle  fa-2x">知</i>
+      <!-- <i class="fa fa-check-circle fa-2x"></i> -->
+      <!-- <i class="fa fa-stack-1x fa-circle-o"></i> -->
+      <!-- </span> -->
+    </a>
+  </li>
+    
+  <li>
+    <a title="weizhiend douban" href="https://www.douban.com/people/weizhiend " target="_blank">
+      <!-- <span class="fa-stack fa-lg"> -->
+      <!-- <i class="fa   fa-inverse  fa-2x">知</i> -->
+      <i class="fa   fa-stop-circle  fa-2x">豆</i>
+      <!-- <i class="fa fa-check-circle fa-2x"></i> -->
+      <!-- <i class="fa fa-stack-1x fa-circle-o"></i> -->
+      <!-- </span> -->
+    </a>
+  </li>
+   
+  <li>
+    <a title="2239403 bilibili" href="https://space.bilibili.com/2239403 " target="_blank">
+      <!-- <span class="fa-stack fa-lg"> -->
+      <!-- <i class="fa   fa-inverse  fa-2x">知</i> -->
+      <i class="fa   fa-stop-circle  fa-2x">bilibili</i>
+      <!-- <i class="fa fa-check-circle fa-2x"></i> -->
+      <!-- <i class="fa fa-stack-1x fa-circle-o"></i> -->
+      <!-- </span> -->
+    </a>
+  </li>
+  
+
+</ul>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>
+
+</div>

@@ -1,0 +1,687 @@
+ 
+
+
+
+
+ 
+
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>电解质</title>
+    <meta name="theme-color" content="#222222" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://jamesfchen.github.io/blog/js/jquery.min.js"></script>
+    <script src="https://jamesfchen.github.io/blog/js/bootstrap.min.js"></script>
+    <script src="https://jamesfchen.github.io/blog/js/header.js"></script>
+    <script src="https://jamesfchen.github.io/blog/js/toc.js"></script>
+    <link
+      href="https://jamesfchen.github.io/blog/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://jamesfchen.github.io/blog/css/theme.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://jamesfchen.github.io/blog/css/syntax.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://jamesfchen.github.io/blog/css/font-awesome/css/font-awesome.min.css"
+      rel="stylesheet"
+    />
+  </head>
+
+  <body>
+    
+ 
+
+
+    <script type="text/javascript">
+      const DELAY = 3000;
+      WebFontConfig = {
+        google: {
+          families: ["Ubuntu::latin"]
+        }
+      };
+      (function() {
+        var wf = document.createElement("script");
+        wf.src =
+          ("https:" == document.location.protocol ? "https" : "http") +
+          "://ajax.googleapis.com/ajax/libs/webfont/1/webfont.js";
+        wf.type = "text/javascript";
+        wf.async = "true";
+        var s = document.getElementsByTagName("script")[0];
+        s.parentNode.insertBefore(wf, s);
+        // var screenHeight = $('body').height()
+        // debug,%s,%d,%o,%f
+        console.log("window.location.href:%s", window.location.href);
+        console.log("window.location.host:%s", window.location.origin);
+        // log
+        // info
+        // warn
+        // error
+        if (window.location.href == window.location.origin + "/blog/") {
+          setTimeout(() => {
+            // $('.mask').css({"transform":"translate(100px,100px)"});​
+            $(".mask").addClass("animate-scroll");
+          }, DELAY);
+        } else {
+          $(".mask").css({ display: "none" });
+        }
+      })();
+    </script>
+
+    <nav class="navbar navbar-inverse navbar-fixed-top">
+      <div class="container">
+        <div class="navbar-header">
+          <button
+            type="button"
+            class="navbar-toggle"
+            data-toggle="collapse"
+            data-target=".navbar-collapse"
+          >
+            <span class="icon-bar"></span> <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a
+            class="navbar-brand"
+            href="https://jamesfchen.github.io/blog/"
+            >电解质</a
+          >
+        </div>
+        <div class="collapse navbar-collapse">
+          <ul class="nav navbar-nav">
+            <li><a href="https://jamesfchen.github.io/blog/">Home</a></li>
+            <li>
+              <a href="https://jamesfchen.github.io/blog/archive.html"
+                >Archive</a
+              >
+            </li>
+            <li>
+              <a href="https://jamesfchen.github.io/blog/tags.html"
+                >Tags</a
+              >
+            </li>
+            <li>
+              <a href="https://jamesfchen.github.io/blog/about.html"
+                >About</a
+              >
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+  </body>
+</html>
+
+
+<div class="wrapper">
+  <div class="content">
+    <div class="container container-center">
+      <div class="row">
+        <div class="col-md-8">
+          <div class="article">
+            <div class="well">
+
+              <h1>
+                <a href="https://jamesfchen.github.io/blog/2020-05-04/process-binder">Framework层的进程 --- 通信</a>
+              </h1>
+              <div class="post-meta">
+
+                <div class="post-time">
+                  <i class="fa fa-calendar"></i>
+                  <!-- <time>Mon, 04 May 2020 00:00:00 +0000</time> -->
+                  <time datetime='2020-05-04'>Mon, May 04 2020, 00:00</time>
+                  
+                </div>
+
+                <!-- <ul> -->
+                  <!-- <li>该文章累计文字 :5948</li> -->
+                <!-- </ul> -->
+
+                <ul>
+                  
+                  <li>
+                    <a href="https://jamesfchen.github.io/blog/tag/framework-design/process">framework-design/process</a>
+                  </li>
+                  
+                </ul>
+              </div>
+              <div class="post-content">
+                <div id="toc" class="toc"></div>
+                <h2 id="1introduction"><em class="header2-font">1.Introduction</em></h2>
+<p>去年欠下的债要用今年来还，今天带来一篇之前笔记整理的文章Binder通信。</p>
+
+<p>Android系统的ipc有这么几种</p>
+<ul>
+  <li>socket系列(Socket、LocalSocket等)</li>
+  <li>binder系列(AIDL、Messenger、Binder、ContentProvider)</li>
+  <li>共享内存</li>
+  <li>管道</li>
+  <li>消息队列</li>
+  <li>信号量</li>
+  <li>信号</li>
+</ul>
+
+<p>至于为什么Android提供给应用层的API大量使用Binder实现，知乎有讨论<a href="https://www.zhihu.com/question/39440766">看这里</a>，这一篇我们来讲讲Binder。首先我们来了解一下AIDL，它是一种DSL，用接口化的形式为我们省去了很多模板代码，举个例子。</p>
+
+<p class="filename">IMyAidlInterface.aidl</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">interface</span> <span class="nc">IMyAidlInterface</span> <span class="o">{</span>
+    <span class="cm">/**
+     * Demonstrates some basic types that you can use as parameters
+     * and return values in AIDL.
+     */</span>
+    <span class="kt">int</span> <span class="nf">basicTypes</span><span class="o">(</span><span class="kt">int</span> <span class="n">anInt</span><span class="o">,</span> <span class="kt">long</span> <span class="n">aLong</span><span class="o">,</span> <span class="kt">boolean</span> <span class="n">aBoolean</span><span class="o">,</span> <span class="kt">float</span> <span class="n">aFloat</span><span class="o">,</span>
+            <span class="kt">double</span> <span class="n">aDouble</span><span class="o">,</span> <span class="nc">String</span> <span class="n">aString</span><span class="o">);</span>
+<span class="o">}</span>
+</code></pre></div></div>
+<p>上面是用AIDL编写的代码，经过编译会自动为我们生成这么几个类IMyAidlInterface(接口声明类)、IMyAidlInterface.Stub(接口的实现类)、IMyAidlInterface.Stub.Proxy(接口实现类的代理类，用于远程代理本地不用代理)或者自己手动抄一下作业实现这样的几个模板代码,  下面是我自己手写的Binder模板代码看起来比较简洁。</p>
+
+<p class="filename">IMyAidlInterface.java</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">interface</span> <span class="nc">IMyAidlInterface</span> <span class="kd">extends</span> <span class="nc">IInterface</span> <span class="o">{</span>
+    <span class="kd">public</span> <span class="kt">int</span> <span class="nf">basicTypes</span><span class="o">(</span><span class="kt">int</span> <span class="n">anInt</span><span class="o">,</span> <span class="kt">long</span> <span class="n">aLong</span><span class="o">,</span> <span class="kt">boolean</span> <span class="n">aBoolean</span><span class="o">,</span> <span class="kt">float</span> <span class="n">aFloat</span><span class="o">,</span> <span class="kt">double</span> <span class="n">aDouble</span><span class="o">,</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">String</span> <span class="n">aString</span><span class="o">)</span> <span class="kd">throws</span> <span class="nc">RemoteException</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre></div></div>
+<p>IMyAidlInterface类用来定义一系列rpc方法，供调用者使用，而具体的实现将交由BinderEntry，我们再来往下看看。</p>
+
+<p class="filename">BinderEntry.java/BinderShadow.java</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cm">/*真正的Binder
+*/</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">BinderEntry</span> <span class="kd">extends</span> <span class="nc">Binder</span> <span class="kd">implements</span> <span class="nc">IMyAidlInterface</span><span class="o">{</span>
+
+    <span class="nd">@Override</span>
+    <span class="kd">protected</span> <span class="kt">boolean</span> <span class="nf">onTransact</span><span class="o">(</span><span class="kt">int</span> <span class="n">code</span><span class="o">,</span> <span class="nd">@NonNull</span> <span class="nc">Parcel</span> <span class="n">data</span><span class="o">,</span> <span class="nd">@Nullable</span> <span class="nc">Parcel</span> <span class="n">reply</span><span class="o">,</span> <span class="kt">int</span> <span class="n">flags</span><span class="o">)</span> <span class="kd">throws</span> <span class="nc">RemoteException</span> <span class="o">{</span>
+        <span class="k">switch</span> <span class="o">(</span><span class="n">code</span><span class="o">)</span> <span class="o">{</span>
+            <span class="k">case</span> <span class="nl">TRANSACTION_basicTypes:</span> <span class="o">{</span>
+                <span class="nc">Log</span><span class="o">.</span><span class="na">d</span><span class="o">(</span><span class="s">"cjf"</span><span class="o">,</span> <span class="s">"entry TRANSACTION_basicTypes"</span><span class="o">);</span>
+                <span class="n">data</span><span class="o">.</span><span class="na">enforceInterface</span><span class="o">(</span><span class="no">DESCRIPTOR</span><span class="o">);</span>
+                <span class="kt">int</span> <span class="n">_arg0</span><span class="o">;</span>
+                <span class="n">_arg0</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="na">readInt</span><span class="o">();</span>
+                <span class="kt">long</span> <span class="n">_arg1</span><span class="o">;</span>
+                <span class="n">_arg1</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="na">readLong</span><span class="o">();</span>
+                <span class="kt">boolean</span> <span class="n">_arg2</span><span class="o">;</span>
+                <span class="n">_arg2</span> <span class="o">=</span> <span class="o">(</span><span class="mi">0</span> <span class="o">!=</span> <span class="n">data</span><span class="o">.</span><span class="na">readInt</span><span class="o">());</span>
+                <span class="kt">float</span> <span class="n">_arg3</span><span class="o">;</span>
+                <span class="n">_arg3</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="na">readFloat</span><span class="o">();</span>
+                <span class="kt">double</span> <span class="n">_arg4</span><span class="o">;</span>
+                <span class="n">_arg4</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="na">readDouble</span><span class="o">();</span>
+                <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">String</span> <span class="n">_arg5</span><span class="o">;</span>
+                <span class="n">_arg5</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="na">readString</span><span class="o">();</span>
+                <span class="kt">int</span> <span class="n">_result</span> <span class="o">=</span> <span class="k">this</span><span class="o">.</span><span class="na">basicTypes</span><span class="o">(</span><span class="n">_arg0</span><span class="o">,</span> <span class="n">_arg1</span><span class="o">,</span> <span class="n">_arg2</span><span class="o">,</span> <span class="n">_arg3</span><span class="o">,</span> <span class="n">_arg4</span><span class="o">,</span> <span class="n">_arg5</span><span class="o">);</span>
+                <span class="n">reply</span><span class="o">.</span><span class="na">writeNoException</span><span class="o">();</span>
+                <span class="n">reply</span><span class="o">.</span><span class="na">writeInt</span><span class="o">(</span><span class="n">_result</span><span class="o">);</span>
+                <span class="k">return</span> <span class="kc">true</span><span class="o">;</span>
+            <span class="o">}</span>
+            <span class="k">default</span><span class="o">:</span>
+                <span class="nc">Log</span><span class="o">.</span><span class="na">d</span><span class="o">(</span><span class="s">"cjf"</span><span class="o">,</span> <span class="s">"entry code:"</span> <span class="o">+</span> <span class="n">code</span><span class="o">);</span>
+                <span class="k">break</span><span class="o">;</span>
+
+
+        <span class="o">}</span>
+        <span class="k">return</span> <span class="kd">super</span><span class="o">.</span><span class="na">onTransact</span><span class="o">(</span><span class="n">code</span><span class="o">,</span> <span class="n">data</span><span class="o">,</span> <span class="n">reply</span><span class="o">,</span> <span class="n">flags</span><span class="o">);</span>
+    <span class="o">}</span>
+
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">basicTypes</span><span class="o">(</span><span class="kt">int</span> <span class="n">anInt</span><span class="o">,</span> <span class="kt">long</span> <span class="n">aLong</span><span class="o">,</span> <span class="kt">boolean</span> <span class="n">aBoolean</span><span class="o">,</span> <span class="kt">float</span> <span class="n">aFloat</span><span class="o">,</span> <span class="kt">double</span> <span class="n">aDouble</span><span class="o">,</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">String</span> <span class="n">aString</span><span class="o">)</span> <span class="o">{</span>
+        <span class="nc">Log</span><span class="o">.</span><span class="na">d</span><span class="o">(</span><span class="s">"cjf"</span><span class="o">,</span> <span class="s">"entry basicTypes:"</span> <span class="o">+</span> <span class="n">anInt</span> <span class="o">+</span> <span class="s">" "</span> <span class="o">+</span> <span class="n">aLong</span> <span class="o">+</span> <span class="s">" "</span> <span class="o">+</span> <span class="n">aBoolean</span> <span class="o">+</span> <span class="s">" "</span> <span class="o">+</span> <span class="n">aFloat</span> <span class="o">+</span> <span class="s">" "</span> <span class="o">+</span> <span class="n">aDouble</span> <span class="o">+</span> <span class="s">" "</span> <span class="o">+</span> <span class="n">aString</span><span class="o">);</span>
+    <span class="o">}</span>
+    <span class="nd">@Override</span>
+    <span class="kd">public</span> <span class="nc">IBinder</span> <span class="nf">asBinder</span><span class="o">()</span> <span class="o">{</span>
+        <span class="k">return</span> <span class="k">this</span><span class="o">;</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+<span class="cm">/*binder的代理类
+*/</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">BinderShadow</span> <span class="kd">implements</span> <span class="nc">IMyAidlInterface</span> <span class="o">{</span>
+    <span class="kd">private</span> <span class="nc">IBinder</span> <span class="n">mRemote</span><span class="o">;</span>
+
+    <span class="kd">public</span> <span class="nf">BinderShadow</span><span class="o">(</span><span class="nc">IBinder</span> <span class="n">mRemote</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">this</span><span class="o">.</span><span class="na">mRemote</span> <span class="o">=</span> <span class="n">mRemote</span><span class="o">;</span>
+    <span class="o">}</span>
+
+    <span class="kd">public</span> <span class="kt">int</span> <span class="nf">basicTypes</span><span class="o">(</span><span class="kt">int</span> <span class="n">anInt</span><span class="o">,</span> <span class="kt">long</span> <span class="n">aLong</span><span class="o">,</span> <span class="kt">boolean</span> <span class="n">aBoolean</span><span class="o">,</span> <span class="kt">float</span> <span class="n">aFloat</span><span class="o">,</span> <span class="kt">double</span> <span class="n">aDouble</span><span class="o">,</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">String</span> <span class="n">aString</span><span class="o">)</span> <span class="kd">throws</span> <span class="nc">RemoteException</span> <span class="o">{</span>
+        <span class="nc">Log</span><span class="o">.</span><span class="na">d</span><span class="o">(</span><span class="s">"cjf"</span><span class="o">,</span> <span class="s">"shadow basicTypes:"</span> <span class="o">+</span> <span class="n">anInt</span> <span class="o">+</span> <span class="s">" "</span> <span class="o">+</span> <span class="n">aLong</span> <span class="o">+</span> <span class="s">" "</span> <span class="o">+</span> <span class="n">aBoolean</span> <span class="o">+</span> <span class="s">" "</span> <span class="o">+</span> <span class="n">aFloat</span> <span class="o">+</span> <span class="s">" "</span> <span class="o">+</span> <span class="n">aDouble</span> <span class="o">+</span> <span class="s">" "</span> <span class="o">+</span> <span class="n">aString</span><span class="o">);</span>
+        <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Parcel</span> <span class="n">_data</span> <span class="o">=</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Parcel</span><span class="o">.</span><span class="na">obtain</span><span class="o">();</span>
+        <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Parcel</span> <span class="n">_reply</span> <span class="o">=</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Parcel</span><span class="o">.</span><span class="na">obtain</span><span class="o">();</span>
+        <span class="kt">int</span> <span class="n">_result</span><span class="o">;</span>
+        <span class="k">try</span> <span class="o">{</span>
+            <span class="n">_data</span><span class="o">.</span><span class="na">writeInterfaceToken</span><span class="o">(</span><span class="nc">Constance</span><span class="o">.</span><span class="na">DESCRIPTOR</span><span class="o">);</span>
+            <span class="n">_data</span><span class="o">.</span><span class="na">writeInt</span><span class="o">(</span><span class="n">anInt</span><span class="o">);</span>
+            <span class="n">_data</span><span class="o">.</span><span class="na">writeLong</span><span class="o">(</span><span class="n">aLong</span><span class="o">);</span>
+            <span class="n">_data</span><span class="o">.</span><span class="na">writeInt</span><span class="o">(((</span><span class="n">aBoolean</span><span class="o">)?(</span><span class="mi">1</span><span class="o">):(</span><span class="mi">0</span><span class="o">)));</span>
+            <span class="n">_data</span><span class="o">.</span><span class="na">writeFloat</span><span class="o">(</span><span class="n">aFloat</span><span class="o">);</span>
+            <span class="n">_data</span><span class="o">.</span><span class="na">writeDouble</span><span class="o">(</span><span class="n">aDouble</span><span class="o">);</span>
+            <span class="n">_data</span><span class="o">.</span><span class="na">writeString</span><span class="o">(</span><span class="n">aString</span><span class="o">);</span>
+            <span class="kt">boolean</span> <span class="n">status</span> <span class="o">=</span> <span class="n">mRemote</span><span class="o">.</span><span class="na">transact</span><span class="o">(</span><span class="n">TRANSACTION_basicTypes</span><span class="o">,</span> <span class="n">_data</span><span class="o">,</span> <span class="n">_reply</span><span class="o">,</span> <span class="mi">0</span><span class="o">);</span>
+            <span class="nc">Log</span><span class="o">.</span><span class="na">d</span><span class="o">(</span><span class="s">"cjf"</span><span class="o">,</span><span class="s">"shadow status:"</span><span class="o">+</span><span class="n">status</span><span class="o">);</span>
+            <span class="n">_reply</span><span class="o">.</span><span class="na">readException</span><span class="o">();</span>
+            <span class="n">_result</span> <span class="o">=</span> <span class="n">_reply</span><span class="o">.</span><span class="na">readInt</span><span class="o">();</span>
+        <span class="o">}</span> <span class="k">finally</span> <span class="o">{</span>
+            <span class="n">_reply</span><span class="o">.</span><span class="na">recycle</span><span class="o">();</span>
+            <span class="n">_data</span><span class="o">.</span><span class="na">recycle</span><span class="o">();</span>
+        <span class="o">}</span>
+        <span class="k">return</span> <span class="n">_result</span><span class="o">;</span>
+    <span class="o">}</span>
+    <span class="nd">@Override</span>
+    <span class="kd">public</span> <span class="nc">IBinder</span> <span class="nf">asBinder</span><span class="o">()</span> <span class="o">{</span>
+        <span class="k">return</span> <span class="n">mRemote</span><span class="o">;</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+<p>当客户端调用本地服务取到的是BinderEntry，BinderEntry是basicTypes接口真正的实现类，直接调用调用接口的实现类。如果是调用远程服务取到的是BinderShadow(代理BinderEntry)，BinderShadow将负责数据写入到_data(Parcel对象)，从_reply(Parcel对象)读取数据，通过调用IBinder#transact方法将_data传到远程服务，远程服务会回调onTransact方法，将数据写入到_reply返回给客户端。</p>
+
+<p>这里要说一下IBinder(实现类Binder)的queryLocalInterface方法，该方法可以查询到该Binder服务对应的IInterface，像AMS对应的IActivityManager,PMS的IPackageManager，可以通过hook该方法拿到IInterface对象，然后使用java动态代理接口，拦截客户端发往framework的数据，篡改framework返回的数据，做一些不能做的事情。</p>
+
+<p>看完上面的代码我们就知道了，其实AIDL是用来声明rpc接口的代码，和Retrofit通过注解声明接口一样，不同的是Retrofit是通过接口的动态代理实现具体的远程调用，AIDL则是通过编译时生成静态代理。了解AIDL，那么我们不禁会问有没有一种远程通信是基于事件的，可以被动调用。还真有。这就让我们引出了下面的主角Messenger信使。没用过的可以看这里的代码<a href="https://github.com/JamesfChen/Spacecraft/blob/master/components/template/src/main/java/com/hawksjamesf/template/StartActivity.java">StartActivity</a>、<a href="https://github.com/JamesfChen/Spacecraft/blob/master/components/template/src/main/java/com/hawksjamesf/template/MessengerService.java">MessengerService</a>，接下来我们讲讲其本质是什么。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">final</span> <span class="kd">class</span> <span class="nc">Messenger</span> <span class="kd">implements</span> <span class="nc">Parcelable</span> <span class="o">{</span>
+   <span class="kd">private</span> <span class="kd">final</span> <span class="nc">IMessenger</span> <span class="n">mTarget</span><span class="o">;</span>
+    <span class="o">...</span>
+    <span class="kd">public</span> <span class="nf">Messenger</span><span class="o">(</span><span class="nc">Handler</span> <span class="n">target</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">mTarget</span> <span class="o">=</span> <span class="n">target</span><span class="o">.</span><span class="na">getIMessenger</span><span class="o">();</span>
+    <span class="o">}</span>
+    <span class="o">...</span>
+<span class="o">}</span>
+
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">Handler</span> <span class="o">{</span>
+    <span class="o">...</span>
+      <span class="kd">final</span> <span class="nc">IMessenger</span> <span class="nf">getIMessenger</span><span class="o">()</span> <span class="o">{</span>
+        <span class="kd">synchronized</span> <span class="o">(</span><span class="n">mQueue</span><span class="o">)</span> <span class="o">{</span>
+            <span class="k">if</span> <span class="o">(</span><span class="n">mMessenger</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+                <span class="k">return</span> <span class="n">mMessenger</span><span class="o">;</span>
+            <span class="o">}</span>
+            <span class="n">mMessenger</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">MessengerImpl</span><span class="o">();</span>
+            <span class="k">return</span> <span class="n">mMessenger</span><span class="o">;</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+    <span class="o">...</span>
+    <span class="kd">private</span> <span class="kd">final</span> <span class="kd">class</span> <span class="nc">MessengerImpl</span> <span class="kd">extends</span> <span class="nc">IMessenger</span><span class="o">.</span><span class="na">Stub</span> <span class="o">{</span>
+        <span class="kd">public</span> <span class="kt">void</span> <span class="nf">send</span><span class="o">(</span><span class="nc">Message</span> <span class="n">msg</span><span class="o">)</span> <span class="o">{</span>
+            <span class="n">msg</span><span class="o">.</span><span class="na">sendingUid</span> <span class="o">=</span> <span class="nc">Binder</span><span class="o">.</span><span class="na">getCallingUid</span><span class="o">();</span>
+            <span class="nc">Handler</span><span class="o">.</span><span class="na">this</span><span class="o">.</span><span class="na">sendMessage</span><span class="o">(</span><span class="n">msg</span><span class="o">);</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+    <span class="o">...</span>
+<span class="o">}</span>
+</code></pre></div></div>
+<p>首先我们需要在服务端初始化一个Messenger，在注入的Handler对象target中，间接初始化了一个服务Binder(IMessenger)，该服务接收来自客户端发送的message然后进入生产者消费者模型中。也就是说每个Messenger对象都会有一个属于自己的服务Binder(IMessenger),客户端会持有一个Messenger，服务端也会持有一个，当他们彼此拥有对方这样就能组成双通道通信。但是这里有个前提是使用<code class="language-plaintext highlighter-rouge">Messenger(Handler target)</code>该构造器，而不是<code class="language-plaintext highlighter-rouge">Messenger(IBinder target)</code>构造器，<code class="language-plaintext highlighter-rouge">Messenger(IBinder target)</code>是为了让我们获取服务Binder而不是构造属于自己的Binder。</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">final</span> <span class="kd">class</span> <span class="nc">Messenger</span> <span class="kd">implements</span> <span class="nc">Parcelable</span> <span class="o">{</span>
+    <span class="kd">private</span> <span class="kd">final</span> <span class="nc">IMessenger</span> <span class="n">mTarget</span><span class="o">;</span>
+    <span class="o">...</span>
+    <span class="kd">public</span> <span class="nc">IBinder</span> <span class="nf">getBinder</span><span class="o">()</span> <span class="o">{</span>
+        <span class="k">return</span> <span class="n">mTarget</span><span class="o">.</span><span class="na">asBinder</span><span class="o">();</span>
+    <span class="o">}</span>
+    <span class="o">...</span>
+    <span class="kd">public</span> <span class="nf">Messenger</span><span class="o">(</span><span class="nc">IBinder</span> <span class="n">target</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">mTarget</span> <span class="o">=</span> <span class="nc">IMessenger</span><span class="o">.</span><span class="na">Stub</span><span class="o">.</span><span class="na">asInterface</span><span class="o">(</span><span class="n">target</span><span class="o">);</span>
+    <span class="o">}</span>
+    <span class="o">...</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>这里在总结一下，当客户端和服务端彼此“牵手”成功，客户端获取了服务Binder然后将自己的Messenger发送给对方，这样双方就能双向通信。</p>
+
+
+                <!-- donation -->
+                <div style="padding: 10px 0; margin: 20px auto; width: 90%; text-align: center;">
+                  <div>如果您觉得写得还不错或者对您有所启发，那就赶紧动动您的小指头，点击下面的红色按钮，狠狠地打赏一番吧。
+                  </div>
+                  <br/>
+                  <button id="rewardButton" disable="enable" onclick="var qr = document.getElementById('QR'); if (qr.style.display === 'none') {qr.style.display='block';} else {qr.style.display='none'}">
+                    <span>赏</span>
+                  </button>
+                  <div id="QR" style="display: none;">
+
+                    <div id="wechat" style="display: inline-block">
+                      <img id="wechat_qr" src="/blog/asset/donation-wechat.jpg" alt="hawks jamesf WeChat Pay" />
+                      <p>微信打赏</p>
+                    </div>
+
+                    <div id="alipay" style="display: inline-block">
+                      <img id="alipay_qr" src="/blog/asset/donation-alipay.png" alt="hawks jamesf Alipay" />
+                      <p>支付宝打赏</p>
+                    </div>
+                  </div>
+                </div>
+
+                
+
+<div class="share-bar">
+  <ul class="share-buttons">
+    
+    <li class="share-facebook">
+      <a href="https://www.facebook.com/sharer/sharer.php?u=https://jamesfchen.github.io/2020-05-04/process-binder" target="_blank" title="Share on Facebook">
+        <span class="fa-stack fa-lg">
+          <i class="fa fa-square-o fa-stack-2x"></i>
+          <i class="fa fa-facebook fa-stack-1x"></i>
+        </span>
+      </a>
+    </li>
+    
+
+    
+    <li class="share-twitter">
+      <a href="https://twitter.com/intent/tweet?url=https://jamesfchen.github.io/2020-05-04/process-binder&text=Framework层的进程 --- 通信" target="_blank" title="Tweet">
+        <span class="fa-stack fa-lg">
+          <i class="fa fa-square-o fa-stack-2x"></i>
+          <i class="fa fa-twitter fa-stack-1x"></i>
+        </span>
+      </a>
+    </li>
+    
+
+    
+
+    
+    <li class="share-linkedin">
+      <a href="http://www.linkedin.com/shareArticle?mini=true&url=https://jamesfchen.github.io/2020-05-04/process-binder&title=Framework层的进程 --- 通信&summary=都是Binder惹的祸&source=" target="_blank" title="Share on LinkedIn">
+        <span class="fa-stack fa-lg">
+          <i class="fa fa-square-o fa-stack-2x"></i>
+          <i class="fa fa-linkedin fa-stack-1x"></i>
+        </span>
+      </a>
+    </li>
+    
+
+    
+
+    
+    <li class="share-envelope">
+      <a href="mailto:?&subject=Framework层的进程 --- 通信&body=都是Binder惹的祸 https://jamesfchen.github.io/2020-05-04/process-binder" target="_blank" title="Email">
+        <span class="fa-stack fa-lg">
+          <i class="fa fa-square-o fa-stack-2x"></i>
+          <i class="fa fa-envelope-o fa-stack-1x"></i>
+        </span>
+      </a>
+    </li>
+    
+
+  </ul>
+</div>
+
+
+              </div>
+
+              
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4 hidden-xs">
+          <div class="sidebar ">
+  <h2>Recent Posts</h2>
+  <ul>
+    
+    <li>
+      <a href="/blog/2021-05-11/network-super-retrofit">网络 --- Super Retrofit</a>
+    </li>
+    
+    <li>
+      <a href="/blog/2021-05-08/application-viewtree">再谈View树</a>
+    </li>
+    
+    <li>
+      <a href="/blog/2021-05-03/producer-consumer">生产者-消费者</a>
+    </li>
+    
+    <li>
+      <a href="/blog/2021-04-29/network-okhttp-exchange">网络 --- OkHttp的金牌讲师Exchange</a>
+    </li>
+    
+    <li>
+      <a href="/blog/2021-04-28/network-okhttp-connection">网络 --- Okhttp Connection的备胎之路</a>
+    </li>
+    
+  </ul>
+</div>
+
+<div class="sidebar">
+  <h2>Tags</h2>
+  <ul class="sideBarTags">
+    <!-- 
+      <li><a href="/blog/tag/呓语">呓语</a></li>
+      
+    
+      <li><a href="/blog/tag/elementary/language">elementary/language</a></li>
+      
+    
+      <li><a href="/blog/tag/elementary/others">elementary/others</a></li>
+      
+    
+      <li><a href="/blog/tag/tools">tools</a></li>
+      
+    
+      <li><a href="/blog/tag/inverse-engineering">inverse-engineering</a></li>
+      
+    
+      <li><a href="/blog/tag/app-design/network">app-design/network</a></li>
+      
+    
+      <li><a href="/blog/tag/build-tools">build-tools</a></li>
+      
+    
+      <li><a href="/blog/tag/cross-platform">cross-platform</a></li>
+      
+    
+      <li><a href="/blog/tag/framework-design/location">framework-design/location</a></li>
+      
+    
+      <li><a href="/blog/tag/app-design/architecture">app-design/architecture</a></li>
+      
+    
+      <li><a href="/blog/tag/framework-design/service">framework-design/service</a></li>
+      
+    
+      <li><a href="/blog/tag/framework-design/ui">framework-design/ui</a></li>
+      
+    
+      <li><a href="/blog/tag/分享">分享</a></li>
+      
+    
+      <li><a href="/blog/tag/elementary/algorithm-structure">elementary/algorithm-structure</a></li>
+      
+    
+      <li><a href="/blog/tag/app-design/image">app-design/image</a></li>
+      
+    
+      <li><a href="/blog/tag/framework-design/process">framework-design/process</a></li>
+      
+    
+      <li><a href="/blog/tag/app-design/av">app-design/av</a></li>
+      
+    
+      <li><a href="/blog/tag/elementary/async">elementary/async</a></li>
+      
+     -->
+
+     
+    <li>
+      <a href="/blog/tag/app-design/architecture" data-toggle="tooltip" data-placement="right" title="1">
+        <span>app-design/architecture</span>
+      </a>
+    </li>
+    
+    <li>
+      <a href="/blog/tag/app-design/av" data-toggle="tooltip" data-placement="right" title="4">
+        <span>app-design/av</span>
+      </a>
+    </li>
+    
+    <li>
+      <a href="/blog/tag/app-design/image" data-toggle="tooltip" data-placement="right" title="1">
+        <span>app-design/image</span>
+      </a>
+    </li>
+    
+    <li>
+      <a href="/blog/tag/app-design/network" data-toggle="tooltip" data-placement="right" title="8">
+        <span>app-design/network</span>
+      </a>
+    </li>
+    
+    <li>
+      <a href="/blog/tag/build-tools" data-toggle="tooltip" data-placement="right" title="2">
+        <span>build-tools</span>
+      </a>
+    </li>
+    
+    <li>
+      <a href="/blog/tag/cross-platform" data-toggle="tooltip" data-placement="right" title="1">
+        <span>cross-platform</span>
+      </a>
+    </li>
+    
+    <li>
+      <a href="/blog/tag/elementary/algorithm-structure" data-toggle="tooltip" data-placement="right" title="1">
+        <span>elementary/algorithm-structure</span>
+      </a>
+    </li>
+    
+    <li>
+      <a href="/blog/tag/elementary/async" data-toggle="tooltip" data-placement="right" title="1">
+        <span>elementary/async</span>
+      </a>
+    </li>
+    
+    <li>
+      <a href="/blog/tag/elementary/language" data-toggle="tooltip" data-placement="right" title="2">
+        <span>elementary/language</span>
+      </a>
+    </li>
+    
+    <li>
+      <a href="/blog/tag/elementary/others" data-toggle="tooltip" data-placement="right" title="3">
+        <span>elementary/others</span>
+      </a>
+    </li>
+    
+    <li>
+      <a href="/blog/tag/framework-design/location" data-toggle="tooltip" data-placement="right" title="6">
+        <span>framework-design/location</span>
+      </a>
+    </li>
+    
+    <li>
+      <a href="/blog/tag/framework-design/process" data-toggle="tooltip" data-placement="right" title="1">
+        <span>framework-design/process</span>
+      </a>
+    </li>
+    
+    <li>
+      <a href="/blog/tag/framework-design/service" data-toggle="tooltip" data-placement="right" title="5">
+        <span>framework-design/service</span>
+      </a>
+    </li>
+    
+    <li>
+      <a href="/blog/tag/framework-design/ui" data-toggle="tooltip" data-placement="right" title="5">
+        <span>framework-design/ui</span>
+      </a>
+    </li>
+    
+    <li>
+      <a href="/blog/tag/inverse-engineering" data-toggle="tooltip" data-placement="right" title="3">
+        <span>inverse-engineering</span>
+      </a>
+    </li>
+    
+    <li>
+      <a href="/blog/tag/tools" data-toggle="tooltip" data-placement="right" title="2">
+        <span>tools</span>
+      </a>
+    </li>
+    
+    <li>
+      <a href="/blog/tag/%E5%88%86%E4%BA%AB" data-toggle="tooltip" data-placement="right" title="3">
+        <span>分享</span>
+      </a>
+    </li>
+    
+    <li>
+      <a href="/blog/tag/%E5%91%93%E8%AF%AD" data-toggle="tooltip" data-placement="right" title="6">
+        <span>呓语</span>
+      </a>
+    </li>
+    
+  </ul>
+</div>
+        </div>
+      </div>
+    </div>
+
+
+
+    
+
+
+  </div>
+      <footer class="footer-distributed">
+      <div class="container">
+        <div class="footer">
+          <p>电解质 &copy; 2016</p>
+          <h6>Follow me</h6>
+
+<ul class="social-media">
+
+  
+  <li>
+    <a title="jamesfchen on Github" href="https://github.com/jamesfchen" target="_blank">
+      <i class="fa fa-github fa-2x"></i>
+    </a>
+  </li>
+   
+  <li>
+    <a title="6393208/hawks93jf on StackOverflow" href="http://stackoverflow.com/users/6393208/hawks93jf"
+      target="_blank">
+      <i class="fa fa-stack-overflow fa-2x"></i>
+    </a>
+  </li>
+      
+  <li>
+    <a title="feed.xml RSS" href="/blog/feed.xml" target="_blank">
+      <i class="fa fa-rss fa-2x"></i>
+    </a>
+  </li>
+   
+  <li>
+    <a title="wei-zhi-end zhihu" href="https://www.zhihu.com/people/wei-zhi-end " target="_blank">
+      <!-- <span class="fa-stack fa-lg"> -->
+      <!-- <i class="fa   fa-inverse  fa-2x">知</i> -->
+      <i class="fa   fa-stop-circle  fa-2x">知</i>
+      <!-- <i class="fa fa-check-circle fa-2x"></i> -->
+      <!-- <i class="fa fa-stack-1x fa-circle-o"></i> -->
+      <!-- </span> -->
+    </a>
+  </li>
+    
+  <li>
+    <a title="weizhiend douban" href="https://www.douban.com/people/weizhiend " target="_blank">
+      <!-- <span class="fa-stack fa-lg"> -->
+      <!-- <i class="fa   fa-inverse  fa-2x">知</i> -->
+      <i class="fa   fa-stop-circle  fa-2x">豆</i>
+      <!-- <i class="fa fa-check-circle fa-2x"></i> -->
+      <!-- <i class="fa fa-stack-1x fa-circle-o"></i> -->
+      <!-- </span> -->
+    </a>
+  </li>
+   
+  <li>
+    <a title="2239403 bilibili" href="https://space.bilibili.com/2239403 " target="_blank">
+      <!-- <span class="fa-stack fa-lg"> -->
+      <!-- <i class="fa   fa-inverse  fa-2x">知</i> -->
+      <i class="fa   fa-stop-circle  fa-2x">bilibili</i>
+      <!-- <i class="fa fa-check-circle fa-2x"></i> -->
+      <!-- <i class="fa fa-stack-1x fa-circle-o"></i> -->
+      <!-- </span> -->
+    </a>
+  </li>
+  
+
+</ul>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>
+
+</div>

@@ -1,0 +1,768 @@
+ 
+
+
+
+
+ 
+
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>电解质</title>
+    <meta name="theme-color" content="#222222" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://jamesfchen.github.io/blog/js/jquery.min.js"></script>
+    <script src="https://jamesfchen.github.io/blog/js/bootstrap.min.js"></script>
+    <script src="https://jamesfchen.github.io/blog/js/header.js"></script>
+    <script src="https://jamesfchen.github.io/blog/js/toc.js"></script>
+    <link
+      href="https://jamesfchen.github.io/blog/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://jamesfchen.github.io/blog/css/theme.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://jamesfchen.github.io/blog/css/syntax.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://jamesfchen.github.io/blog/css/font-awesome/css/font-awesome.min.css"
+      rel="stylesheet"
+    />
+  </head>
+
+  <body>
+    
+ 
+
+
+    <script type="text/javascript">
+      const DELAY = 3000;
+      WebFontConfig = {
+        google: {
+          families: ["Ubuntu::latin"]
+        }
+      };
+      (function() {
+        var wf = document.createElement("script");
+        wf.src =
+          ("https:" == document.location.protocol ? "https" : "http") +
+          "://ajax.googleapis.com/ajax/libs/webfont/1/webfont.js";
+        wf.type = "text/javascript";
+        wf.async = "true";
+        var s = document.getElementsByTagName("script")[0];
+        s.parentNode.insertBefore(wf, s);
+        // var screenHeight = $('body').height()
+        // debug,%s,%d,%o,%f
+        console.log("window.location.href:%s", window.location.href);
+        console.log("window.location.host:%s", window.location.origin);
+        // log
+        // info
+        // warn
+        // error
+        if (window.location.href == window.location.origin + "/blog/") {
+          setTimeout(() => {
+            // $('.mask').css({"transform":"translate(100px,100px)"});​
+            $(".mask").addClass("animate-scroll");
+          }, DELAY);
+        } else {
+          $(".mask").css({ display: "none" });
+        }
+      })();
+    </script>
+
+    <nav class="navbar navbar-inverse navbar-fixed-top">
+      <div class="container">
+        <div class="navbar-header">
+          <button
+            type="button"
+            class="navbar-toggle"
+            data-toggle="collapse"
+            data-target=".navbar-collapse"
+          >
+            <span class="icon-bar"></span> <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a
+            class="navbar-brand"
+            href="https://jamesfchen.github.io/blog/"
+            >电解质</a
+          >
+        </div>
+        <div class="collapse navbar-collapse">
+          <ul class="nav navbar-nav">
+            <li><a href="https://jamesfchen.github.io/blog/">Home</a></li>
+            <li>
+              <a href="https://jamesfchen.github.io/blog/archive.html"
+                >Archive</a
+              >
+            </li>
+            <li>
+              <a href="https://jamesfchen.github.io/blog/tags.html"
+                >Tags</a
+              >
+            </li>
+            <li>
+              <a href="https://jamesfchen.github.io/blog/about.html"
+                >About</a
+              >
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+  </body>
+</html>
+
+
+<div class="wrapper">
+  <div class="content">
+    <div class="container container-center">
+      <div class="row">
+        <div class="col-md-8">
+          <div class="article">
+            <div class="well">
+
+              <h1>
+                <a href="https://jamesfchen.github.io/blog/2021-05-03/producer-consumer">生产者-消费者</a>
+              </h1>
+              <div class="post-meta">
+
+                <div class="post-time">
+                  <i class="fa fa-calendar"></i>
+                  <!-- <time>Mon, 03 May 2021 22:50:00 +0000</time> -->
+                  <time datetime='2021-05-03'>Mon, May 03 2021, 22:50</time>
+                  
+                </div>
+
+                <!-- <ul> -->
+                  <!-- <li>该文章累计文字 :7608</li> -->
+                <!-- </ul> -->
+
+                <ul>
+                  
+                  <li>
+                    <a href="https://jamesfchen.github.io/blog/tag/elementary/async">elementary/async</a>
+                  </li>
+                  
+                </ul>
+              </div>
+              <div class="post-content">
+                <div id="toc" class="toc"></div>
+                <h2 id="1summary"><em class="header2-font">1.Summary</em></h2>
+<p>来谈谈OkHttp 和 Android平台提供的生产者-消费者模型</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>..</th>
+      <th>消费者</th>
+      <th>生成者</th>
+      <th>产品</th>
+      <th>Android消费的场所</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>OkHttp</td>
+      <td>TaskRunner</td>
+      <td>TaskQueue</td>
+      <td>Task</td>
+      <td>其他线程</td>
+    </tr>
+    <tr>
+      <td>Android</td>
+      <td>Looper</td>
+      <td>MessageQueue</td>
+      <td>Message(Handler,Runnable)</td>
+      <td>主线程、其他线程、跨进程</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>生产者-消费者模型是一种实现线程通信的方式，其核心是利用queue先进先出的特点，生产者负责将消息(或者事件)写入到queue，而消费者负责从queue读取。</p>
+<h2 id="2introduction"><em class="header2-font">2.Introduction</em></h2>
+<p>Android平台的生产者消费者模型使用范围更加广泛</p>
+<ul>
+  <li>支持跨进程，支持跨线程</li>
+  <li>使用epoll唤醒睡眠，linux提供的系统调用</li>
+  <li>使用链表保存Message，插入删除有优势</li>
+</ul>
+
+<p>OkHttp生产者消费者模型</p>
+<ul>
+  <li>支持跨线程</li>
+  <li>使用wait/notifyXXX唤醒睡眠，java虚拟机提供的调用</li>
+  <li>使用数组保存Task，查询有优势</li>
+</ul>
+
+<h3 id="okhttp生产者消费者模型"><em class="header3-font">OkHttp生产者消费者模型</em></h3>
+
+<p class="filename">生产者TaskQueue</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">class</span> <span class="nc">TaskQueue</span> <span class="n">internal</span> <span class="nf">constructor</span><span class="o">(</span>
+  <span class="n">internal</span> <span class="n">val</span> <span class="nl">taskRunner:</span> <span class="nc">TaskRunner</span><span class="o">,</span>
+  <span class="n">internal</span> <span class="n">val</span> <span class="nl">name:</span> <span class="nc">String</span>
+<span class="o">)</span> <span class="o">{</span>
+    <span class="n">internal</span> <span class="n">val</span> <span class="n">futureTasks</span> <span class="o">=</span> <span class="n">mutableListOf</span><span class="o">&lt;</span><span class="nc">Task</span><span class="o">&gt;()</span>
+<span class="o">}</span>
+</code></pre></div></div>
+<!-- 看到上面使用数组保存Task，你应该会奇怪为什么不和Android平台一样使用链表？其实这个问题不难回答，OkHttp用了数组必然是看中其查询的复杂度比链表好， -->
+<p>生产者TaskQueue使用了数组保存了产品Task。在OkHttp中生产者可以很多个，比如RealConnectionPool连接池持有一个cleanupQueue，用来存放定时清理连接的任务cleanupTask，在Http2Connection中的生产者更多了，比如writerQueue用来存放发送心态包的任务还有pushQueue保存server push的任务，但是对于消费者TaskRunner独独只会有一个。</p>
+
+<p class="filename">消费者TaskRunner</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  <span class="cm">/** Queues with tasks that are currently executing their [TaskQueue.activeTask]. */</span>
+  <span class="kd">private</span> <span class="n">val</span> <span class="n">busyQueues</span> <span class="o">=</span> <span class="n">mutableListOf</span><span class="o">&lt;</span><span class="nc">TaskQueue</span><span class="o">&gt;()</span>
+
+  <span class="cm">/** Queues not in [busyQueues] that have non-empty [TaskQueue.futureTasks]. */</span>
+  <span class="kd">private</span> <span class="n">val</span> <span class="n">readyQueues</span> <span class="o">=</span> <span class="n">mutableListOf</span><span class="o">&lt;</span><span class="nc">TaskQueue</span><span class="o">&gt;()</span>
+
+  <span class="n">fun</span> <span class="nf">awaitTaskToRun</span><span class="o">():</span> <span class="nc">Task</span><span class="o">?</span> <span class="o">{</span>
+    <span class="k">this</span><span class="o">.</span><span class="na">assertThreadHoldsLock</span><span class="o">()</span>
+
+    <span class="k">while</span> <span class="o">(</span><span class="kc">true</span><span class="o">)</span> <span class="o">{</span>
+      <span class="k">if</span> <span class="o">(</span><span class="n">readyQueues</span><span class="o">.</span><span class="na">isEmpty</span><span class="o">())</span> <span class="o">{</span>
+        <span class="k">return</span> <span class="kc">null</span> <span class="c1">// Nothing to do.</span>
+      <span class="o">}</span>
+
+      <span class="n">val</span> <span class="n">now</span> <span class="o">=</span> <span class="n">backend</span><span class="o">.</span><span class="na">nanoTime</span><span class="o">()</span>
+      <span class="kt">var</span> <span class="n">minDelayNanos</span> <span class="o">=</span> <span class="nc">Long</span><span class="o">.</span><span class="na">MAX_VALUE</span>
+      <span class="kt">var</span> <span class="nl">readyTask:</span> <span class="nc">Task</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span>
+      <span class="kt">var</span> <span class="n">multipleReadyTasks</span> <span class="o">=</span> <span class="kc">false</span>
+
+      <span class="c1">// Decide what to run. This loop's goal wants to:</span>
+      <span class="c1">//  * Find out what this thread should do (either run a task or sleep)</span>
+      <span class="c1">//  * Find out if there's enough work to start another thread.</span>
+      <span class="n">eachQueue</span><span class="err">@</span> <span class="k">for</span> <span class="o">(</span><span class="n">queue</span> <span class="n">in</span> <span class="n">readyQueues</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">val</span> <span class="n">candidate</span> <span class="o">=</span> <span class="n">queue</span><span class="o">.</span><span class="na">futureTasks</span><span class="o">[</span><span class="mi">0</span><span class="o">]</span>
+        <span class="n">val</span> <span class="n">candidateDelay</span> <span class="o">=</span> <span class="n">maxOf</span><span class="o">(</span><span class="mi">0L</span><span class="o">,</span> <span class="n">candidate</span><span class="o">.</span><span class="na">nextExecuteNanoTime</span> <span class="o">-</span> <span class="n">now</span><span class="o">)</span>
+
+        <span class="n">when</span> <span class="o">{</span>
+          <span class="c1">// Compute the delay of the soonest-executable task.</span>
+          <span class="n">candidateDelay</span> <span class="o">&gt;</span> <span class="mi">0L</span> <span class="o">-&gt;</span> <span class="o">{</span>
+            <span class="n">minDelayNanos</span> <span class="o">=</span> <span class="n">minOf</span><span class="o">(</span><span class="n">candidateDelay</span><span class="o">,</span> <span class="n">minDelayNanos</span><span class="o">)</span>
+            <span class="k">continue</span><span class="nd">@eachQueue</span>
+          <span class="o">}</span>
+
+          <span class="c1">// If we already have more than one task, that's enough work for now. Stop searching.</span>
+          <span class="n">readyTask</span> <span class="o">!=</span> <span class="kc">null</span> <span class="o">-&gt;</span> <span class="o">{</span>
+            <span class="n">multipleReadyTasks</span> <span class="o">=</span> <span class="kc">true</span>
+            <span class="k">break</span><span class="nd">@eachQueue</span>
+          <span class="o">}</span>
+
+          <span class="c1">// We have a task to execute when we complete the loop.</span>
+          <span class="k">else</span> <span class="o">-&gt;</span> <span class="o">{</span>
+            <span class="n">readyTask</span> <span class="o">=</span> <span class="n">candidate</span>
+          <span class="o">}</span>
+        <span class="o">}</span>
+      <span class="o">}</span>
+
+      <span class="c1">// Implement the decision.</span>
+      <span class="n">when</span> <span class="o">{</span>
+        <span class="c1">// We have a task ready to go. Get ready.</span>
+        <span class="n">readyTask</span> <span class="o">!=</span> <span class="kc">null</span> <span class="o">-&gt;</span> <span class="o">{</span>
+          <span class="n">beforeRun</span><span class="o">(</span><span class="n">readyTask</span><span class="o">)</span>
+
+          <span class="c1">// Also start another thread if there's more work or scheduling to do.</span>
+          <span class="k">if</span> <span class="o">(</span><span class="n">multipleReadyTasks</span> <span class="o">||</span> <span class="o">!</span><span class="n">coordinatorWaiting</span> <span class="o">&amp;&amp;</span> <span class="n">readyQueues</span><span class="o">.</span><span class="na">isNotEmpty</span><span class="o">())</span> <span class="o">{</span>
+            <span class="n">backend</span><span class="o">.</span><span class="na">execute</span><span class="o">(</span><span class="n">runnable</span><span class="o">)</span>
+          <span class="o">}</span>
+
+          <span class="k">return</span> <span class="n">readyTask</span>
+        <span class="o">}</span>
+
+        <span class="c1">// Notify the coordinator of a task that's coming up soon.</span>
+        <span class="n">coordinatorWaiting</span> <span class="o">-&gt;</span> <span class="o">{</span>
+          <span class="k">if</span> <span class="o">(</span><span class="n">minDelayNanos</span> <span class="o">&lt;</span> <span class="n">coordinatorWakeUpAt</span> <span class="o">-</span> <span class="n">now</span><span class="o">)</span> <span class="o">{</span>
+            <span class="n">backend</span><span class="o">.</span><span class="na">coordinatorNotify</span><span class="o">(</span><span class="k">this</span><span class="nd">@TaskRunner</span><span class="o">)</span>
+          <span class="o">}</span>
+          <span class="k">return</span> <span class="kc">null</span>
+        <span class="o">}</span>
+
+        <span class="c1">// No other thread is coordinating. Become the coordinator!</span>
+        <span class="k">else</span> <span class="o">-&gt;</span> <span class="o">{</span>
+          <span class="n">coordinatorWaiting</span> <span class="o">=</span> <span class="kc">true</span>
+          <span class="n">coordinatorWakeUpAt</span> <span class="o">=</span> <span class="n">now</span> <span class="o">+</span> <span class="n">minDelayNanos</span>
+          <span class="k">try</span> <span class="o">{</span>
+            <span class="n">backend</span><span class="o">.</span><span class="na">coordinatorWait</span><span class="o">(</span><span class="k">this</span><span class="nd">@TaskRunner</span><span class="o">,</span> <span class="n">minDelayNanos</span><span class="o">)</span>
+          <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="nl">_:</span> <span class="nc">InterruptedException</span><span class="o">)</span> <span class="o">{</span>
+            <span class="c1">// Will cause all tasks to exit unless more are scheduled!</span>
+            <span class="n">cancelAll</span><span class="o">()</span>
+          <span class="o">}</span> <span class="k">finally</span> <span class="o">{</span>
+            <span class="n">coordinatorWaiting</span> <span class="o">=</span> <span class="kc">false</span>
+          <span class="o">}</span>
+        <span class="o">}</span>
+      <span class="o">}</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+</code></pre></div></div>
+<p>消费者TaskRunner不停向生产者TaskQueue取task。<br />
+对于一个消费者来说可以向多家生产厂商(readyQueues = mutableListOf<TaskQueue>())消费，每个生产厂商提供的产品task按照时间排序，距离现在最近排在队伍头部。</TaskQueue></p>
+<ul>
+  <li>如果多家生产厂商的产品符合一定条件(任务执行的时间&lt;=当前时间)，那么就会有多个生产厂商的产品被消费者购买。</li>
+  <li>如果多家生产厂商有那么几家生产线超前，可以提前预定，那么就会约定一个发售时间(minDelayNanos)让消费者等待,到时消费者再抢购，当然了，如果本来没有的突然插入一款新的产品也会打破这个等待的时间，重新抢购。</li>
+  <li>如果多家生产厂商有多没有产品了，那么就会停止任务轮询。</li>
+</ul>
+
+<p>上面的代码我们可以看到Okhttp中的任务生成消费有线程的切换，线程池为缓存池，没有核心线程，不限制线程数，保活60s，及其短暂。</p>
+
+<h3 id="android生产者消费者模型"><em class="header3-font">Android生产者消费者模型</em></h3>
+<p>Android的生产者MessageQueue保存产品的方式不同于OkHttp的生产者TaskQueue，MessageQueue的产品Message使用链表结构来保存，在插入删除方便比数组有优势，不过查询就是劣势。</p>
+
+<p class="filename">生产者MessageQueue</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nc">Message</span> <span class="nf">next</span><span class="o">()</span> <span class="o">{</span>
+        <span class="o">...</span>
+        
+        <span class="k">for</span> <span class="o">(;;)</span> <span class="o">{</span>
+            <span class="o">...</span>
+            <span class="n">nativePollOnce</span><span class="o">(</span><span class="n">ptr</span><span class="o">,</span> <span class="n">nextPollTimeoutMillis</span><span class="o">);</span>
+
+            <span class="kd">synchronized</span> <span class="o">(</span><span class="k">this</span><span class="o">)</span> <span class="o">{</span>
+                <span class="c1">// Try to retrieve the next message.  Return if found.</span>
+                <span class="kd">final</span> <span class="kt">long</span> <span class="n">now</span> <span class="o">=</span> <span class="nc">SystemClock</span><span class="o">.</span><span class="na">uptimeMillis</span><span class="o">();</span>
+                <span class="nc">Message</span> <span class="n">prevMsg</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+                <span class="nc">Message</span> <span class="n">msg</span> <span class="o">=</span> <span class="n">mMessages</span><span class="o">;</span>
+                <span class="k">if</span> <span class="o">(</span><span class="n">msg</span> <span class="o">!=</span> <span class="kc">null</span> <span class="o">&amp;&amp;</span> <span class="n">msg</span><span class="o">.</span><span class="na">target</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+                    <span class="c1">// Stalled by a barrier.  Find the next asynchronous message in the queue.</span>
+                    <span class="k">do</span> <span class="o">{</span>
+                        <span class="n">prevMsg</span> <span class="o">=</span> <span class="n">msg</span><span class="o">;</span>
+                        <span class="n">msg</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="na">next</span><span class="o">;</span>
+                    <span class="o">}</span> <span class="k">while</span> <span class="o">(</span><span class="n">msg</span> <span class="o">!=</span> <span class="kc">null</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="n">msg</span><span class="o">.</span><span class="na">isAsynchronous</span><span class="o">());</span>
+                <span class="o">}</span>
+                <span class="k">if</span> <span class="o">(</span><span class="n">msg</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+                    <span class="k">if</span> <span class="o">(</span><span class="n">now</span> <span class="o">&lt;</span> <span class="n">msg</span><span class="o">.</span><span class="na">when</span><span class="o">)</span> <span class="o">{</span>
+                        <span class="c1">// Next message is not ready.  Set a timeout to wake up when it is ready.</span>
+                        <span class="n">nextPollTimeoutMillis</span> <span class="o">=</span> <span class="o">(</span><span class="kt">int</span><span class="o">)</span> <span class="nc">Math</span><span class="o">.</span><span class="na">min</span><span class="o">(</span><span class="n">msg</span><span class="o">.</span><span class="na">when</span> <span class="o">-</span> <span class="n">now</span><span class="o">,</span> <span class="nc">Integer</span><span class="o">.</span><span class="na">MAX_VALUE</span><span class="o">);</span>
+                    <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+                        <span class="c1">// Got a message.</span>
+                        <span class="n">mBlocked</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
+                        <span class="k">if</span> <span class="o">(</span><span class="n">prevMsg</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+                            <span class="n">prevMsg</span><span class="o">.</span><span class="na">next</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="na">next</span><span class="o">;</span>
+                        <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+                            <span class="n">mMessages</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="na">next</span><span class="o">;</span>
+                        <span class="o">}</span>
+                        <span class="n">msg</span><span class="o">.</span><span class="na">next</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+                        <span class="k">if</span> <span class="o">(</span><span class="no">DEBUG</span><span class="o">)</span> <span class="nc">Log</span><span class="o">.</span><span class="na">v</span><span class="o">(</span><span class="no">TAG</span><span class="o">,</span> <span class="s">"Returning message: "</span> <span class="o">+</span> <span class="n">msg</span><span class="o">);</span>
+                        <span class="n">msg</span><span class="o">.</span><span class="na">markInUse</span><span class="o">();</span>
+                        <span class="k">return</span> <span class="n">msg</span><span class="o">;</span>
+                    <span class="o">}</span>
+                <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+                    <span class="c1">// No more messages.</span>
+                    <span class="n">nextPollTimeoutMillis</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="o">;</span>
+                <span class="o">}</span>
+                
+                <span class="o">...</span>
+                
+                <span class="c1">// Process the quit message now that all pending messages have been handled.</span>
+                <span class="k">if</span> <span class="o">(</span><span class="n">mQuitting</span><span class="o">)</span> <span class="o">{</span>
+                    <span class="n">dispose</span><span class="o">();</span>
+                    <span class="k">return</span> <span class="kc">null</span><span class="o">;</span>
+                <span class="o">}</span>
+                
+                <span class="o">...</span>
+                <span class="k">if</span> <span class="o">(</span><span class="n">pendingIdleHandlerCount</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+                    <span class="c1">// No idle handlers to run.  Loop and wait some more.</span>
+                    <span class="n">mBlocked</span> <span class="o">=</span> <span class="kc">true</span><span class="o">;</span>
+                    <span class="k">continue</span><span class="o">;</span>
+                <span class="o">}</span>
+                <span class="o">...</span>
+            <span class="o">}</span>
+                
+        <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+<p>MessageQueue#next是获取Message的方法，如果消息是异步消息，那么就不会被barrier拦住，barrier的功能是拦住非异步消息的被消费，这样就能把所有的cpu资源都给先要处理的事情，Choreographer就利用barrier拦住非异步的消息，然后递归View数。如果没有消息那么就会调用epoll编写native接口进行wait。wait这一块OkHttp的消费者TaskRunner则是基于java wait,这个到底孰强孰弱，有机会在看看，关于epoll的使用可以移步<a href="https://github.com/JamesfChen/attack-on-titan/blob/master/guard/src/main/jni/guard/event.cpp">这里代码</a></p>
+
+<p class="filename">消费者Looper</p>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code> <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">loop</span><span class="o">()</span> <span class="o">{</span>
+        <span class="kd">final</span> <span class="nc">Looper</span> <span class="n">me</span> <span class="o">=</span> <span class="n">myLooper</span><span class="o">();</span>
+        <span class="o">...</span>
+        <span class="kd">final</span> <span class="nc">MessageQueue</span> <span class="n">queue</span> <span class="o">=</span> <span class="n">me</span><span class="o">.</span><span class="na">mQueue</span><span class="o">;</span>
+
+        <span class="c1">// Make sure the identity of this thread is that of the local process,</span>
+        <span class="c1">// and keep track of what that identity token actually is.</span>
+        <span class="nc">Binder</span><span class="o">.</span><span class="na">clearCallingIdentity</span><span class="o">();</span>
+        <span class="kd">final</span> <span class="kt">long</span> <span class="n">ident</span> <span class="o">=</span> <span class="nc">Binder</span><span class="o">.</span><span class="na">clearCallingIdentity</span><span class="o">();</span>
+
+        <span class="k">for</span> <span class="o">(;;)</span> <span class="o">{</span>
+            <span class="nc">Message</span> <span class="n">msg</span> <span class="o">=</span> <span class="n">queue</span><span class="o">.</span><span class="na">next</span><span class="o">();</span> <span class="c1">// might block</span>
+            <span class="o">...</span>
+            <span class="k">try</span> <span class="o">{</span>
+                <span class="n">msg</span><span class="o">.</span><span class="na">target</span><span class="o">.</span><span class="na">dispatchMessage</span><span class="o">(</span><span class="n">msg</span><span class="o">);</span>
+                <span class="n">end</span> <span class="o">=</span> <span class="o">(</span><span class="n">slowDispatchThresholdMs</span> <span class="o">==</span> <span class="mi">0</span><span class="o">)</span> <span class="o">?</span> <span class="mi">0</span> <span class="o">:</span>
+            <span class="o">}</span> <span class="k">finally</span> <span class="o">{</span>
+            <span class="o">...</span>
+            <span class="o">}</span>
+            <span class="o">...</span>
+            <span class="n">msg</span><span class="o">.</span><span class="na">recycleUnchecked</span><span class="o">();</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+</code></pre></div></div>
+<p>Android的消费者Looper比起OkHttp的消费者TaskRunner代码，就是循环处理消息。这里要说一下由于每个线程都会有自己的Looper(通过ThreadLocal实现)，那么对于主线程Looper来说，当其他线程enqueueMessage消息到MessageQueue(这里MessageQueue对象被synchronized，避免MessageQueue对象被操作)之后，在取消息的时候始终是在主线程(这里去消息也对MessageQueue对象synchronized)。</p>
+
+<p>其实如果理解了上面的生产者消费者模型，那么对于kotlin的协程之间的切换，RxJava的主线程与其他线程之间的切换，就不难理解。</p>
+
+
+                <!-- donation -->
+                <div style="padding: 10px 0; margin: 20px auto; width: 90%; text-align: center;">
+                  <div>如果您觉得写得还不错或者对您有所启发，那就赶紧动动您的小指头，点击下面的红色按钮，狠狠地打赏一番吧。
+                  </div>
+                  <br/>
+                  <button id="rewardButton" disable="enable" onclick="var qr = document.getElementById('QR'); if (qr.style.display === 'none') {qr.style.display='block';} else {qr.style.display='none'}">
+                    <span>赏</span>
+                  </button>
+                  <div id="QR" style="display: none;">
+
+                    <div id="wechat" style="display: inline-block">
+                      <img id="wechat_qr" src="/blog/asset/donation-wechat.jpg" alt="hawks jamesf WeChat Pay" />
+                      <p>微信打赏</p>
+                    </div>
+
+                    <div id="alipay" style="display: inline-block">
+                      <img id="alipay_qr" src="/blog/asset/donation-alipay.png" alt="hawks jamesf Alipay" />
+                      <p>支付宝打赏</p>
+                    </div>
+                  </div>
+                </div>
+
+                
+
+<div class="share-bar">
+  <ul class="share-buttons">
+    
+    <li class="share-facebook">
+      <a href="https://www.facebook.com/sharer/sharer.php?u=https://jamesfchen.github.io/2021-05-03/producer-consumer" target="_blank" title="Share on Facebook">
+        <span class="fa-stack fa-lg">
+          <i class="fa fa-square-o fa-stack-2x"></i>
+          <i class="fa fa-facebook fa-stack-1x"></i>
+        </span>
+      </a>
+    </li>
+    
+
+    
+    <li class="share-twitter">
+      <a href="https://twitter.com/intent/tweet?url=https://jamesfchen.github.io/2021-05-03/producer-consumer&text=生产者-消费者" target="_blank" title="Tweet">
+        <span class="fa-stack fa-lg">
+          <i class="fa fa-square-o fa-stack-2x"></i>
+          <i class="fa fa-twitter fa-stack-1x"></i>
+        </span>
+      </a>
+    </li>
+    
+
+    
+
+    
+    <li class="share-linkedin">
+      <a href="http://www.linkedin.com/shareArticle?mini=true&url=https://jamesfchen.github.io/2021-05-03/producer-consumer&title=生产者-消费者&summary=异步的基石&source=" target="_blank" title="Share on LinkedIn">
+        <span class="fa-stack fa-lg">
+          <i class="fa fa-square-o fa-stack-2x"></i>
+          <i class="fa fa-linkedin fa-stack-1x"></i>
+        </span>
+      </a>
+    </li>
+    
+
+    
+
+    
+    <li class="share-envelope">
+      <a href="mailto:?&subject=生产者-消费者&body=异步的基石 https://jamesfchen.github.io/2021-05-03/producer-consumer" target="_blank" title="Email">
+        <span class="fa-stack fa-lg">
+          <i class="fa fa-square-o fa-stack-2x"></i>
+          <i class="fa fa-envelope-o fa-stack-1x"></i>
+        </span>
+      </a>
+    </li>
+    
+
+  </ul>
+</div>
+
+
+              </div>
+
+              
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4 hidden-xs">
+          <div class="sidebar ">
+  <h2>Recent Posts</h2>
+  <ul>
+    
+    <li>
+      <a href="/blog/2021-05-11/network-super-retrofit">网络 --- Super Retrofit</a>
+    </li>
+    
+    <li>
+      <a href="/blog/2021-05-08/application-viewtree">再谈View树</a>
+    </li>
+    
+    <li>
+      <a href="/blog/2021-05-03/producer-consumer">生产者-消费者</a>
+    </li>
+    
+    <li>
+      <a href="/blog/2021-04-29/network-okhttp-exchange">网络 --- OkHttp的金牌讲师Exchange</a>
+    </li>
+    
+    <li>
+      <a href="/blog/2021-04-28/network-okhttp-connection">网络 --- Okhttp Connection的备胎之路</a>
+    </li>
+    
+  </ul>
+</div>
+
+<div class="sidebar">
+  <h2>Tags</h2>
+  <ul class="sideBarTags">
+    <!-- 
+      <li><a href="/blog/tag/呓语">呓语</a></li>
+      
+    
+      <li><a href="/blog/tag/elementary/language">elementary/language</a></li>
+      
+    
+      <li><a href="/blog/tag/elementary/others">elementary/others</a></li>
+      
+    
+      <li><a href="/blog/tag/tools">tools</a></li>
+      
+    
+      <li><a href="/blog/tag/inverse-engineering">inverse-engineering</a></li>
+      
+    
+      <li><a href="/blog/tag/app-design/network">app-design/network</a></li>
+      
+    
+      <li><a href="/blog/tag/build-tools">build-tools</a></li>
+      
+    
+      <li><a href="/blog/tag/cross-platform">cross-platform</a></li>
+      
+    
+      <li><a href="/blog/tag/framework-design/location">framework-design/location</a></li>
+      
+    
+      <li><a href="/blog/tag/app-design/architecture">app-design/architecture</a></li>
+      
+    
+      <li><a href="/blog/tag/framework-design/service">framework-design/service</a></li>
+      
+    
+      <li><a href="/blog/tag/framework-design/ui">framework-design/ui</a></li>
+      
+    
+      <li><a href="/blog/tag/分享">分享</a></li>
+      
+    
+      <li><a href="/blog/tag/elementary/algorithm-structure">elementary/algorithm-structure</a></li>
+      
+    
+      <li><a href="/blog/tag/app-design/image">app-design/image</a></li>
+      
+    
+      <li><a href="/blog/tag/framework-design/process">framework-design/process</a></li>
+      
+    
+      <li><a href="/blog/tag/app-design/av">app-design/av</a></li>
+      
+    
+      <li><a href="/blog/tag/elementary/async">elementary/async</a></li>
+      
+     -->
+
+     
+    <li>
+      <a href="/blog/tag/app-design/architecture" data-toggle="tooltip" data-placement="right" title="1">
+        <span>app-design/architecture</span>
+      </a>
+    </li>
+    
+    <li>
+      <a href="/blog/tag/app-design/av" data-toggle="tooltip" data-placement="right" title="4">
+        <span>app-design/av</span>
+      </a>
+    </li>
+    
+    <li>
+      <a href="/blog/tag/app-design/image" data-toggle="tooltip" data-placement="right" title="1">
+        <span>app-design/image</span>
+      </a>
+    </li>
+    
+    <li>
+      <a href="/blog/tag/app-design/network" data-toggle="tooltip" data-placement="right" title="8">
+        <span>app-design/network</span>
+      </a>
+    </li>
+    
+    <li>
+      <a href="/blog/tag/build-tools" data-toggle="tooltip" data-placement="right" title="2">
+        <span>build-tools</span>
+      </a>
+    </li>
+    
+    <li>
+      <a href="/blog/tag/cross-platform" data-toggle="tooltip" data-placement="right" title="1">
+        <span>cross-platform</span>
+      </a>
+    </li>
+    
+    <li>
+      <a href="/blog/tag/elementary/algorithm-structure" data-toggle="tooltip" data-placement="right" title="1">
+        <span>elementary/algorithm-structure</span>
+      </a>
+    </li>
+    
+    <li>
+      <a href="/blog/tag/elementary/async" data-toggle="tooltip" data-placement="right" title="1">
+        <span>elementary/async</span>
+      </a>
+    </li>
+    
+    <li>
+      <a href="/blog/tag/elementary/language" data-toggle="tooltip" data-placement="right" title="2">
+        <span>elementary/language</span>
+      </a>
+    </li>
+    
+    <li>
+      <a href="/blog/tag/elementary/others" data-toggle="tooltip" data-placement="right" title="3">
+        <span>elementary/others</span>
+      </a>
+    </li>
+    
+    <li>
+      <a href="/blog/tag/framework-design/location" data-toggle="tooltip" data-placement="right" title="6">
+        <span>framework-design/location</span>
+      </a>
+    </li>
+    
+    <li>
+      <a href="/blog/tag/framework-design/process" data-toggle="tooltip" data-placement="right" title="1">
+        <span>framework-design/process</span>
+      </a>
+    </li>
+    
+    <li>
+      <a href="/blog/tag/framework-design/service" data-toggle="tooltip" data-placement="right" title="5">
+        <span>framework-design/service</span>
+      </a>
+    </li>
+    
+    <li>
+      <a href="/blog/tag/framework-design/ui" data-toggle="tooltip" data-placement="right" title="5">
+        <span>framework-design/ui</span>
+      </a>
+    </li>
+    
+    <li>
+      <a href="/blog/tag/inverse-engineering" data-toggle="tooltip" data-placement="right" title="3">
+        <span>inverse-engineering</span>
+      </a>
+    </li>
+    
+    <li>
+      <a href="/blog/tag/tools" data-toggle="tooltip" data-placement="right" title="2">
+        <span>tools</span>
+      </a>
+    </li>
+    
+    <li>
+      <a href="/blog/tag/%E5%88%86%E4%BA%AB" data-toggle="tooltip" data-placement="right" title="3">
+        <span>分享</span>
+      </a>
+    </li>
+    
+    <li>
+      <a href="/blog/tag/%E5%91%93%E8%AF%AD" data-toggle="tooltip" data-placement="right" title="6">
+        <span>呓语</span>
+      </a>
+    </li>
+    
+  </ul>
+</div>
+        </div>
+      </div>
+    </div>
+
+
+
+    
+
+
+  </div>
+      <footer class="footer-distributed">
+      <div class="container">
+        <div class="footer">
+          <p>电解质 &copy; 2016</p>
+          <h6>Follow me</h6>
+
+<ul class="social-media">
+
+  
+  <li>
+    <a title="jamesfchen on Github" href="https://github.com/jamesfchen" target="_blank">
+      <i class="fa fa-github fa-2x"></i>
+    </a>
+  </li>
+   
+  <li>
+    <a title="6393208/hawks93jf on StackOverflow" href="http://stackoverflow.com/users/6393208/hawks93jf"
+      target="_blank">
+      <i class="fa fa-stack-overflow fa-2x"></i>
+    </a>
+  </li>
+      
+  <li>
+    <a title="feed.xml RSS" href="/blog/feed.xml" target="_blank">
+      <i class="fa fa-rss fa-2x"></i>
+    </a>
+  </li>
+   
+  <li>
+    <a title="wei-zhi-end zhihu" href="https://www.zhihu.com/people/wei-zhi-end " target="_blank">
+      <!-- <span class="fa-stack fa-lg"> -->
+      <!-- <i class="fa   fa-inverse  fa-2x">知</i> -->
+      <i class="fa   fa-stop-circle  fa-2x">知</i>
+      <!-- <i class="fa fa-check-circle fa-2x"></i> -->
+      <!-- <i class="fa fa-stack-1x fa-circle-o"></i> -->
+      <!-- </span> -->
+    </a>
+  </li>
+    
+  <li>
+    <a title="weizhiend douban" href="https://www.douban.com/people/weizhiend " target="_blank">
+      <!-- <span class="fa-stack fa-lg"> -->
+      <!-- <i class="fa   fa-inverse  fa-2x">知</i> -->
+      <i class="fa   fa-stop-circle  fa-2x">豆</i>
+      <!-- <i class="fa fa-check-circle fa-2x"></i> -->
+      <!-- <i class="fa fa-stack-1x fa-circle-o"></i> -->
+      <!-- </span> -->
+    </a>
+  </li>
+   
+  <li>
+    <a title="2239403 bilibili" href="https://space.bilibili.com/2239403 " target="_blank">
+      <!-- <span class="fa-stack fa-lg"> -->
+      <!-- <i class="fa   fa-inverse  fa-2x">知</i> -->
+      <i class="fa   fa-stop-circle  fa-2x">bilibili</i>
+      <!-- <i class="fa fa-check-circle fa-2x"></i> -->
+      <!-- <i class="fa fa-stack-1x fa-circle-o"></i> -->
+      <!-- </span> -->
+    </a>
+  </li>
+  
+
+</ul>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>
+
+</div>
